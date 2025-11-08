@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+::-webkit-scrollbar{
+  display: none;
+}
+
+@layer utilities {
+  .animate-pulse-slow {
+    animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+  
+  .animate-ping-slow {
+    animation: ping 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+}
+@theme {
+
+  --breakpoint-*: initial;
+
+
+  --breakpoint-640xl: 40rem;   /* 640px */
+  --breakpoint-md: 48rem;   /* 768px */
+  --breakpoint-lg: 64rem;   /* 1024px */
+  --breakpoint-xl: 80rem;   /* 1280px */
+}
