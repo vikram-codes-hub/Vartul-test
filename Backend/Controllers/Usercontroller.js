@@ -2,7 +2,8 @@ import bcrypt from "bcryptjs";
 import User from "../Models/User.js";
 import { generatetoken } from "../Utils/generatetokens.js";
 import cloudinary from "../Config/cloudinary.js";
-
+import redisclient from "../Config/redis.js";
+import { clearUserCache } from "../Utils/redishelper.js";
 // 🟢 Controller for user signup
 export const userSignup = async (req, res) => {
   try {
@@ -98,10 +99,18 @@ export const userLogin = async (req, res) => {
 export const getUserProfile=async(req,res)=>{
     try {
         const userId=req.params.id;
+
+        //chache checking fiorst
+        const cacheprofile=await redisclient.get(`userprofile:${userId}`);
+        if(cacheprofile){
+            return res.json({success:true,user:JSON.parse(cacheprofile)});
+        }
         const user=await User.findById(userId).select("-password");
         if(!user){
         return res.status(404).json({message:"User not found"});
         }
+         await redisclient.setEx(`user:${userId}`, 300, JSON.stringify(user));
+
         res.json({success:true,user});
     }catch (error) {
         console.error("Error fetching user profile:", error);
@@ -150,6 +159,8 @@ export const deleteUserAccount=async(req,res)=>{
     try {
         const userId=req.user._id;
         await User.findByIdAndDelete(userId);
+        await clearUserCache(req.user._id);
+
         res.json({success:true,message:"User account deleted successfully"});
 
     } catch (error) {
@@ -196,12 +207,16 @@ export const follow=async(req,res)=>{
       return res.status(404).json({ message: "User not found" });
     }
         if(currentUser.following.includes(userIdToFollow)){
-           return res.json.status(400).json({message:"You already follow this user"});
+          return res.status(400).json({ message: "You already follow this user" });
+
         }
         userToFollow.followers.push(currentUserId);
         currentUser.following.push(userIdToFollow);
         await userToFollow.save();
         await currentUser.save();
+        await clearUserCache(currentUserId);
+await clearUserCache(userIdToFollow);
+
         res.json({success:true,message:"User followed successfully"});
 
     } catch (error) {
@@ -233,13 +248,16 @@ export const unfollow=async(req,res)=>{
       (userId) => userId.toString() !== id
     );
 
-    await userIdToUnfollow.save();
-    await currentUserId.save();
+        await userIdToUnfollow.save();
+        await currentUserId.save();
+        await clearUserCache(currentUserId);
+await clearUserCache(userIdToUnfollow);
 
-    res.status(200).json({
-      success: true,
-      message: "User unfollowed successfully",
-    });
+
+        res.status(200).json({
+          success: true,
+          message: "User unfollowed successfully",
+        });
     } catch (error) {
         console.log("Error in unfollow user:", error);
         res.status(500).json({ message: "Internal server error" });
@@ -252,6 +270,13 @@ export const getFollowersAndFollowing=async(req,res)=>{
     if(!userId){
         return res.status(400).json({message:"User id is required"});
     }
+
+    //checking cache fiorst
+    const cachedata=await redisclient.get(`followers:${userId}`);
+    if (cachedata) {
+      return res.json({ success: true, ...JSON.parse(cachedata), fromCache: true });
+    }
+    
     const user=await User.findById(userId)
     .populate("followers","firstName lastName username profilePic")
     .populate("following","firstName lastName username profilePic")
@@ -259,6 +284,13 @@ export const getFollowersAndFollowing=async(req,res)=>{
     if(!user){
         return res.status(404).json({message:"User not found"});
     }
+
+     const response = {
+      followers: user.followers,
+      following: user.following,
+    };
+
+    await redisclient.setEx(`followers:${userId}`, 300, JSON.stringify(response));
 
     res.json({success:true,followers:user.followers,following:user.following});
 
@@ -276,6 +308,11 @@ export const searchUser=async(req,res)=>{
       return res.status(400).json({ message: "Search query is required" });
     }
 
+  const cacheduser=await redisclient.get(`searchuser:${query}`);
+  if(cacheduser){
+    return res.json({success:true,users:JSON.parse(cacheduser)});
+  }
+
     const user=await User.find({
       $or:[
         {username:{$regex:query,$options:"i"}},
@@ -287,7 +324,13 @@ export const searchUser=async(req,res)=>{
     if(user.length===0){
         return res.status(404).json({message:"No users found"});
     }
-    
+
+    const response = {
+      success: true,
+      count: user.length,
+      user,
+    }
+    await redisclient.setEx(`search:${query}`, 300, JSON.stringify(response));
     res.status(200).json({
       success: true,
       count: user.length,
@@ -313,8 +356,17 @@ export const getCurrentUser = async (req, res) => {
 //contolerr for getting all users for admin panel
 export const getAllUsers = async (req, res) => {
   try {
+    const cachedUsers = await redisclient.get("allUsers");
+    if (cachedUsers) {
+      return res.json({ success: true, ...JSON.parse(cachedUsers), fromCache: true });
+    }
+
     const users = await User.find().select("username firstName lastName profilePic bio");
-    res.status(200).json({ success: true, count: users.length, users });
+    const response = { count: users.length, users };
+
+    await redisclient.setEx("allUsers", 600, JSON.stringify(response)); 
+
+    res.json({ success: true, ...response });
   } catch (error) {
     console.error("Error fetching all users:", error);
     res.status(500).json({ message: "Internal server error" });
@@ -341,6 +393,8 @@ export const completeUserProfile=async(req,res)=>{
       },
       { new: true }
     ).select("-password");
+    await clearUserCache(req.user._id);
+
    
     res.status(200).json({
       success: true,
@@ -371,6 +425,8 @@ export const updateUserInterests = async (req, res) => {
       { interests, contentCategories },
       { new: true }
     ).select("-password");
+    await clearUserCache(req.user._id);
+
 
     res.status(200).json({
       success: true,

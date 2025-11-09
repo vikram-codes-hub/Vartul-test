@@ -37,7 +37,7 @@ const userSchema = new mongoose.Schema(
       default: "",
     },
 
-    // 🔹 Interests (user must select at least 3)
+    //  Interests (user must select at least 3)
     interests: {
       type: [String],
       validate: {
@@ -49,7 +49,7 @@ const userSchema = new mongoose.Schema(
       default: [],
     },
 
-    // 🔹 Preferred content categories (user must select at least 3)
+    // Preferred content categories (user must select at least 3)
     contentCategories: {
       type: [String],
       validate: {
@@ -90,7 +90,7 @@ const userSchema = new mongoose.Schema(
     resetPasswordToken: String,
     resetPasswordExpire: Date,
 
-    // 🧩 Social system
+    //  Social system
     followers: [
       {
         type: mongoose.Schema.Types.ObjectId,
@@ -104,7 +104,7 @@ const userSchema = new mongoose.Schema(
       },
     ],
 
-    // 🧾 Posts
+    //  Posts
     posts: [
       {
         type: mongoose.Schema.Types.ObjectId,
@@ -112,7 +112,7 @@ const userSchema = new mongoose.Schema(
       },
     ],
 
-    // ❤️ Liked posts
+    //  Liked posts
     likedPosts: [
       {
         type: mongoose.Schema.Types.ObjectId,
@@ -120,7 +120,7 @@ const userSchema = new mongoose.Schema(
       },
     ],
 
-    // 💬 Comments
+    //  Comments
     comments: [
       {
         type: mongoose.Schema.Types.ObjectId,
