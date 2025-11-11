@@ -1,18 +1,113 @@
-// messageController.js
 import Message from "../Models/Message.js";
 import Conversation from "../Models/Conversation.js";
-import cloudinary from "../Config/cloudinary.js"; // for media uploads
+import cloudinary from "../Config/cloudinary.js";
+import { io, UserSocketMap } from "../Server.js"
+import User from "../Models/User.js";
 
-//  Send a new message (text, image, video, etc.)
 export const sendMessage = async (req, res) => {
-  // Creates or finds a conversation between sender & receiver
-  // Saves new message and updates conversation lastMessage
+  try {
+    const { image, text } = req.body;
+    const senderId = req.user._id;
+    const receiverId = req.params.userId;
+
+    // 1 Find or create conversation between sender and receiver
+    let conversation = await Conversation.findOne({
+      participants: { $all: [senderId, receiverId] },
+    });
+
+    if (!conversation) {
+      conversation = await Conversation.create({
+        participants: [senderId, receiverId],
+        lastMessage: text || "Media message",
+      });
+    }
+
+    let mediaUrl = null;
+    let messageType = "text";
+
+    //  Handle media upload 
+    if (image) {
+      const uploadRes = await cloudinary.uploader.upload(image);
+      mediaUrl = uploadRes.secure_url;
+      messageType = "image";
+    }
+
+    //  Create message linked to this conversation
+    const message = await Message.create({
+      conversationId: conversation._id,
+      senderId,
+      receiverId,
+      messageType,
+      text,
+      mediaUrl,
+    });
+
+    //  Update conversation’s last message preview
+    conversation.lastMessage = text || "Media message";
+    await conversation.save();
+
+    //  Emit real-time message to receiver
+    const receiverSocketId = UserSocketMap[receiverId];
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit("newMessage", message);
+    }
+
+    res.json({ success: true, message });
+  } catch (error) {
+    console.error("Error sending message:", error);
+    res
+      .status(500)
+      .json({ success: false, error: "Failed to send message" });
+  }
 };
+
 
 //get users for sidebar
 export const getChatUsers = async (req, res) => {
-    
-}
+  try {
+    const userId = req.user._id;
+
+    // Fetch all users except current
+    const filteredUsers = await User.find({ _id: { $ne: userId } }).select(
+      "-password"
+    );
+
+    const unseenMessages = {};
+
+    //  Count unseen messages
+    await Promise.all(
+      filteredUsers.map(async (user) => {
+        const messages = await Message.find({
+          senderId: user._id,
+          receiverId: userId,
+          isRead: false,
+        });
+
+        if (messages.length > 0) {
+          unseenMessages[user._id] = messages.length;
+        }
+      })
+    );
+
+    //  Build result with unseenCount, isOnline, lastSeen
+    const result = filteredUsers.map((user) => ({
+      _id: user._id,
+      username: user.username,
+      profilePic: user.profilePic,
+      unseenCount: unseenMessages[user._id] || 0,
+      isOnline: !!UserSocketMap[user._id], //  online if present in socket map
+      lastSeen: user.lastSeen || null, //  last seen time
+    }));
+
+    res.status(200).json({ success: true, users: result });
+  } catch (error) {
+    console.error("Error fetching chat users:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to fetch chat users",
+    });
+  }
+};
 //  Get all messages between two users (conversation chat)
 export const getMessages = async (req, res) => {
   // Fetches all messages by conversationId or between two users

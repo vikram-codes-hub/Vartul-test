@@ -1,68 +1,91 @@
-import express from "express";
-import dotenv from "dotenv";
-import { connectDb } from "./Config/db.js";
-import helmet from "helmet";
-import redisclient from "./Config/redis.js";
-import http from "http";
-import { Server } from "socket.io";
+import express from 'express';
+import "dotenv/config";
+import http from 'http';
 import cors from "cors";
-import { apiLimiter } from "./Middelwares/ratelimmiter.js";
+import { connectDb } from './lib/db.js';
+import userRouter from './Routes/UserRoute.js';
+import messageRouter from './Routes/Messageroute.js';
+import { Server } from 'socket.io';
+import User from './Models/User.js'
 
-dotenv.config();
-
-// Initialize express app
 const app = express();
-app.use(cors());
-app.use(express.json());
-
-// Security middleware
-app.use(helmet());
-app.use(apiLimiter);
-
-// Create HTTP server
 const server = http.createServer(app);
 
-// Initialize Socket.io
+// Middleware
+app.use(express.json({ limit: "4mb" }));
+app.use(cors());
+
+// Socket.io setup
 export const io = new Server(server, {
-  cors: {
-    origin: "*", // Later replace with your frontend URL
-    methods: ["GET", "POST"],
-  },
+  cors: { origin: "*" }
 });
 
-// Socket.io connection
-io.on("connection", (socket) => {
-  console.log("🟢 User connected:", socket.id);
+// Store mapping of userId => socketId
+export const UserSocketMap = {};
 
-  socket.on("joinRoom", (userId) => {
-    socket.join(userId);
-    console.log(`User ${userId} joined their room`);
+// Socket.io connection handler
+io.on("connection", async (socket) => {
+  const userId = socket.handshake.query.userId;
+
+  if (!userId) {
+    console.log("❌ No userId provided in handshake");
+    return;
+  }
+
+  console.log("🟢 User connected:", userId);
+
+  //  Add user to socket map
+  UserSocketMap[userId] = socket.id;
+
+  //  Update user's lastSeen to "now" (connected)
+  try {
+    await User.findByIdAndUpdate(userId, { lastSeen: new Date() });
+  } catch (err) {
+    console.error("⚠️ Error updating lastSeen on connect:", err.message);
+  }
+
+  // 3 Emit all online user IDs
+  io.emit("getOnlineUsers", Object.keys(UserSocketMap));
+
+  //  Handle disconnection
+  socket.on("disconnect", async () => {
+    console.log("🔴 User disconnected:", userId);
+
+    delete UserSocketMap[userId];
+    io.emit("getOnlineUsers", Object.keys(UserSocketMap));
+
+    //  Update lastSeen when user goes offline
+    try {
+      await User.findByIdAndUpdate(userId, { lastSeen: new Date() });
+      console.log(`🕓 Updated lastSeen for ${userId}`);
+    } catch (err) {
+      console.error("⚠️ Error updating lastSeen on disconnect:", err.message);
+    }
   });
 
-  socket.on("sendMessage", (data) => {
-    // data = { senderId, receiverId, message }
-    io.to(data.receiverId).emit("receiveMessage", data);
-  });
-
-  socket.on("disconnect", () => {
-    console.log("🔴 User disconnected:", socket.id);
+  //  Message relay
+  socket.on("sendMessage", ({ senderId, receiverId, message }) => {
+    const receiverSocketId = UserSocketMap[receiverId];
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit("newMessage", {
+        senderId,
+        message,
+      });
+    }
   });
 });
 
-// Connect to database
-connectDb();
+// Routes
+app.use("/api/status", (req, res) => res.send("Server is live"));
+app.use("/api/auth", userRouter);
+app.use("/api/messages", messageRouter);
 
-// Connect to Redis
-
-await redisclient.connect();
-
-// Basic route
-app.get("/", (req, res) => {
-  res.send("✅ API is running...");
-});
-
-// Start server
+// DB connection and server start
+await connectDb();
 const PORT = process.env.PORT || 5000;
+
 server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
+
+export default server;
