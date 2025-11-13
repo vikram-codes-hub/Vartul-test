@@ -4,7 +4,7 @@ import { generatetoken } from "../Utils/generatetokens.js";
 import cloudinary from "../Config/cloudinary.js";
 import redisclient from "../Config/redis.js";
 import { clearUserCache } from "../Utils/redishelper.js";
-// 🟢 Controller for user signup
+//  Controller for user signup
 export const userSignup = async (req, res) => {
   try {
     const { firstName, lastName, username, email, password, bio } = req.body;

@@ -1,16 +1,16 @@
-import Message from "../Models/Message.js";
-import Conversation from "../Models/Conversation.js";
+import Message from '../Models/Chat.js'
+
 import cloudinary from "../Config/cloudinary.js";
-import { io, UserSocketMap } from "../Server.js"
+import { getIO, UserSocketMap } from "../Utils/socket.js";
 import User from "../Models/User.js";
 
 export const sendMessage = async (req, res) => {
   try {
-    const { image, text } = req.body;
+    const { image, text,video} = req.body;
     const senderId = req.user._id;
     const receiverId = req.params.userId;
 
-    // 1 Find or create conversation between sender and receiver
+    // Find or create conversation between sender and receiver
     let conversation = await Conversation.findOne({
       participants: { $all: [senderId, receiverId] },
     });
@@ -31,6 +31,11 @@ export const sendMessage = async (req, res) => {
       mediaUrl = uploadRes.secure_url;
       messageType = "image";
     }
+    if(video){
+      const uploadRes = await cloudinary.uploader.upload(video, { resource_type: "video" });
+      mediaUrl = uploadRes.secure_url;
+      messageType = "video";
+    }
 
     //  Create message linked to this conversation
     const message = await Message.create({
@@ -43,12 +48,15 @@ export const sendMessage = async (req, res) => {
     });
 
     //  Update conversation’s last message preview
-    conversation.lastMessage = text || "Media message";
+    if (text) conversation.lastMessage = text;
+    else if (messageType === "image") conversation.lastMessage = "Image";
+    else if (messageType === "video") conversation.lastMessage = "Video";
     await conversation.save();
 
     //  Emit real-time message to receiver
     const receiverSocketId = UserSocketMap[receiverId];
-    if (receiverSocketId) {
+    const io = getIO();
+    if (receiverSocketId && io) {
       io.to(receiverSocketId).emit("newMessage", message);
     }
 
@@ -110,52 +118,135 @@ export const getChatUsers = async (req, res) => {
 };
 //  Get all messages between two users (conversation chat)
 export const getMessages = async (req, res) => {
-  // Fetches all messages by conversationId or between two users
-  // Sorted by time (oldest → newest)
+  try {
+    const myId = req.user._id;
+    const selectedUserId = req.params.selecteduserId;
+
+   //imporntant  //send api like this----------  Frontend  send ?page=1&pageSize=50
+    const page = Math.max(1, parseInt(req.query.page || "1", 10));
+    const pageSize = Math.max(20, parseInt(req.query.pageSize || "50", 10));
+    const skip = (page - 1) * pageSize;
+
+    //  Mark incoming messages as read (messages sent by selectedUser -> me)
+  
+    await Message.updateMany(
+      { senderId: selectedUserId, receiverId: myId, isRead: false },
+      { $set: { isRead: true } }
+    );
+
+    //  Fetch messages between the two users,old to new
+    const messages = await Message.find({
+      $or: [
+        { senderId: myId, receiverId: selectedUserId },
+        { senderId: selectedUserId, receiverId: myId },
+      ],
+    })
+      .sort({ createdAt: 1 })//oldesr to newest
+      .skip(skip)
+      .limit(pageSize)
+      .populate("senderId", "username profilePic _id")   
+      .populate("receiverId", "username profilePic _id")
+      .lean();
+
+    //  Count total messages for UI pagination
+    const totalMessages = await Message.countDocuments({
+      $or: [
+        { senderId: myId, receiverId: selectedUserId },
+        { senderId: selectedUserId, receiverId: myId },
+      ],
+    });
+
+    res.json({
+      success: true,
+      messages,
+      meta: {
+        page,
+        pageSize,
+        totalMessages,
+        hasMore: skip + messages.length < totalMessages,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching messages:", error);
+    res.status(500).json({ success: false, error: "Failed to fetch messages" });
+  }
 };
 
-//  Mark all messages as read when user opens chat
-export const markAsRead = async (req, res) => {
-  // Updates isRead = true for all messages where receiver is current user
-  // Also resets unread count in conversation
-};
+
 
 //  Delete a single message
 export const deleteMessage = async (req, res) => {
-  // Allows sender to delete their own message
-  // Removes message and optionally updates lastMessage in conversation
+ try {
+
+  const {messageId} = req.params;
+  const userId = req.user._id;
+
+  const message = await Message.findById(messageId);
+
+  if (!message) {
+    return res.status(404).json({ success: false, error: "Message not found" });
+  }
+
+  //  Only sender can delete the message
+  if(message.senderId.toString()!=userId.toString()){
+    return res.status(403).json({ success: false, error: "Unauthorized to delete this message" });
+  }
+
+  await Message.findByIdAndDelete(messageId);
+  //emit the socker event to notify receiver about deletion
+  const recieverId = UserSocketMap[message.receiverId];
+  const io = getIO();
+  if (recieverId && io) {
+    io.to(recieverId).emit("messageDeleted", { messageId });
+  }
+
+  // tell sender own socket to update the ui
+  const senderSocketId = UserSocketMap[userId];
+  if (senderSocketId && io) {
+    io.to(senderSocketId).emit("messageDeleted", { messageId });
+  }
+  res.json({ success: true, message: "Message deleted successfully" });
+ } catch (error) {
+  
+ }
 };
 
-//  Get all conversations for the logged-in user (Inbox view)
-export const getConversations = async (req, res) => {
-  // Fetches all conversations where current user is a participant
-  // Populates the other user's info and last message preview
-};
+
 
 //  Delete a whole conversation thread
 export const deleteConversation = async (req, res) => {
-  // Deletes a conversation and its associated messages
-  // Or marks as deleted for that user (soft delete option)
+  try {
+    const myId = req.user._id;
+    const otherUserId = req.params.userId;
+
+    const conversation = await Conversation.findOne({
+      participants: { $all: [myId, otherUserId] },
+    });
+
+    if (!conversation) {
+      return res.status(404).json({ success: false, error: "Conversation not found" });
+    }
+
+    // Delete all messages
+    await Message.deleteMany({ conversationId: conversation._id });
+
+    // Delete conversation
+    await Conversation.findByIdAndDelete(conversation._id);
+
+    // Notify other user
+    const receiverSocketId = UserSocketMap[otherUserId];
+    const io = getIO();
+    if (receiverSocketId && io) {
+      io.to(receiverSocketId).emit("conversationDeleted", { userId: myId });
+    }
+
+    res.json({ success: true, message: "Conversation deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting conversation:", error);
+    res.status(500).json({ success: false, error: "Failed to delete conversation" });
+  }
 };
 
-//  Upload chat media (image, video, file)
-export const uploadChatMedia = async (req, res) => {
-  // Handles file uploads using Cloudinary
-  // Returns secure media URL to be used when sending a message
-};
 
-//  Get total unread message count for the logged-in user
-export const getUnreadCount = async (req, res) => {
-  // Counts all unread messages across all conversations
-  // Returns total count for notification badges
-};
 
-//  Emit realtime message event (for socket.io)
-export const emitMessage = async (req, res) => {
-  // Optional: Triggers socket event to deliver message instantly
-};
 
-//  Receive new incoming message event (socket listener)
-export const receiveMessage = async (req, res) => {
-  // Optional: Handles receiving messages in realtime via socket
-};

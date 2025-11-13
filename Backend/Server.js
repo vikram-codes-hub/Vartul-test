@@ -2,11 +2,18 @@ import express from 'express';
 import "dotenv/config";
 import http from 'http';
 import cors from "cors";
-import { connectDb } from './lib/db.js';
+import { connectDb } from './Config/db.js'
 import userRouter from './Routes/UserRoute.js';
-import messageRouter from './Routes/Messageroute.js';
 import { Server } from 'socket.io';
 import User from './Models/User.js'
+import chatRouter from "./Routes/Chatroute.js";
+
+import redisClient from './Config/redis.js';
+import postRouter from './Routes/PostRoute.js';
+import storyrouter from './Routes/Stroyrouter.js';
+import notificationrouter from './Routes/Notificatinrouter.js';
+import savedpostrouter from './Routes/Savedpostrouter.js';
+import Reelrouter from './Routes/Reelrouter.js';
 
 const app = express();
 const server = http.createServer(app);
@@ -19,6 +26,19 @@ app.use(cors());
 export const io = new Server(server, {
   cors: { origin: "*" }
 });
+
+
+// Connect to DB
+await connectDb();
+// Connect to Redis Cloud
+try {
+  await redisClient.connect();
+  console.log("🔗 Redis connection established!");
+} catch (err) {
+  console.error("❌ Redis connection failed:", err.message);
+}
+
+
 
 // Store mapping of userId => socketId
 export const UserSocketMap = {};
@@ -77,11 +97,22 @@ io.on("connection", async (socket) => {
 
 // Routes
 app.use("/api/status", (req, res) => res.send("Server is live"));
+// User routes
 app.use("/api/auth", userRouter);
-app.use("/api/messages", messageRouter);
+// Chat routes
+app.use("/api/messages",chatRouter);
+// Post routes
+app.use('/api/posts',postRouter)
+//story route
+app.use('/api/story',storyrouter)
+//notification route
+app.use('/api/notification',notificationrouter)
+//saved post
+app.use('/api/saved-post',savedpostrouter)
+//reel router
+app.use('/api/reels',Reelrouter)
 
-// DB connection and server start
-await connectDb();
+
 const PORT = process.env.PORT || 5000;
 
 server.listen(PORT, () => {
