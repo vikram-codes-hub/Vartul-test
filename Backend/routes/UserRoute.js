@@ -1,5 +1,5 @@
 import express from 'express';
-import { changeUserPassword, completeUserProfile, deleteUserAccount, follow, getAllUsers, getCurrentUser, getFollowersAndFollowing, getUserProfile, searchUser, unfollow, updateUserProfile, userLogin, userSignup } from '../Controllers/Usercontroller.js'
+import { changeUserPassword, checkauth, completeUserProfile, deleteUserAccount, follow, getAllUsers, getCurrentUser, getFollowersAndFollowing, getUserProfile, searchUser, unfollow, updateUserProfile, userLogin, userSignup } from '../Controllers/Usercontroller.js'
 import { isLoggedIn } from '../Middelwares/Isloggeddin.js';
 
 const userrouter = express.Router();
@@ -8,6 +8,7 @@ const userrouter = express.Router();
 userrouter.post('/signup',userSignup);
 
 userrouter.post('/login',userLogin);
+userrouter.get('/check',checkauth)
 
 //password Routes
 userrouter.post('/change-password',isLoggedIn,changeUserPassword);

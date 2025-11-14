@@ -439,4 +439,14 @@ export const updateUserInterests = async (req, res) => {
   }
 };
 
+// check auth
+export const checkauth = async (req, res) => {
+  try {
+    res.json({ success: true, user: req.user });
+  } catch (error) {
+    console.log("Problem in checking auth", error);
+    res.json({ success: false });
+  }
+};
+
 //controller to forget password 
