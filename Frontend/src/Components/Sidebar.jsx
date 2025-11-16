@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useContext } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 import Logo from './ui/Logo'
 import { 
@@ -14,9 +14,12 @@ import {
   CiMenuFries,
 } from "react-icons/ci"
 import { FaCircleInfo } from "react-icons/fa6";
+import { Usercontext } from '../Context/Usercontext';
 
 const Sidebar = () => {
   const [isCollapsed, setIsCollapsed] = useState(false)
+
+  const {Logout}=useContext(Usercontext)
 
   useEffect(() => {
     const handleResize = () => {
@@ -108,7 +111,7 @@ const Sidebar = () => {
           >
             <CiLogout className='w-6 h-6 flex-shrink-0' />
             {!isCollapsed && (
-              <p className='text-base font-medium'>
+              <p onClick={Logout} className='text-base font-medium'>
                 Logout
               </p>
             )}

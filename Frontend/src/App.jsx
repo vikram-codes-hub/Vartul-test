@@ -1,63 +1,104 @@
-import React from 'react'
-import { Route, Routes, useLocation, Navigate } from 'react-router-dom'
-import { useSelector } from 'react-redux'
-import Home from './Pages/Home'
-import Reels from './Pages/Reels'
-import Settings from './Pages/Settings'
-import Chat from './Pages/Chat'
-import Sidebar from './Components/Sidebar'
-import Aboutus from './Pages/Aboutus'
-import Twt_Token from './Pages/Twt_Token'
-import Dashboard from './Pages/Dashboard'
-import Login from './Pages/Login'
-import Signup from './Pages/Signup'
-import ProfileSetup from './Pages/ProfileSetup'
+import React, { useContext } from "react";
+import { Route, Routes, useLocation, Navigate } from "react-router-dom";
 
-import Footer from './Pages/Footer'
-import { ToastContainer } from 'react-toastify'
-import 'react-toastify/dist/ReactToastify.css'
-import Myprofile from './Pages/Myprofile'
+import Home from "./Pages/Home";
+import Reels from "./Pages/Reels";
+import Settings from "./Pages/Settings";
+import Chat from "./Pages/Chat";
+import Sidebar from "./Components/Sidebar";
+import Aboutus from "./Pages/Aboutus";
+import Twt_Token from "./Pages/Twt_Token";
+import Dashboard from "./Pages/Dashboard";
+import ProfileSetup from "./Pages/ProfileSetup";
+import Myprofile from "./Pages/Myprofile";
+import AuthPage from "./Pages/Authpage";
 
+import Footer from "./Pages/Footer";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+
+import { Usercontext } from "./Context/Usercontext";
 
 const App = () => {
-  const location = useLocation()
-  const { isAuthenticated, user } = useSelector(state => state.auth)
-  const hideFooter = location.pathname.startsWith('/chat') || 
-                    location.pathname === '/login' || 
-                    location.pathname === '/signup' ||
-                    location.pathname === '/profile-setup'
-  
-  // Check if sidebar should be hidden
-  const hideSidebar = location.pathname === '/login' || 
-                      location.pathname === '/signup' || 
-                      location.pathname === '/profile-setup'
-  
+  const location = useLocation();
+  const { authuser, authMode } = useContext(Usercontext);
+
+  // Hide Sidebar on auth + profile setup pages
+  const hideSidebar =
+    location.pathname === "/auth" ||
+    location.pathname === "/profile-setup";
+
+  // Hide footer on specific pages
+  const hideFooter =
+    location.pathname.startsWith("/chat") ||
+    location.pathname === "/auth" ||
+    location.pathname === "/profile-setup";
+
   return (
-    <div className='flex flex-col'>
-      <div>
-        <ToastContainer/>
-        {!hideSidebar && <Sidebar/>}
-        <Routes>
-          {/* Public routes */}
-          <Route path='/login' element={isAuthenticated ? <Navigate to="/dashboard" /> : <Login/>}/>
-          <Route path='/signup' element={isAuthenticated ? <Navigate to="/profile-setup" /> : <Signup/>}/>
-          
-          {/* Protected routes */}
-          <Route path='/profile-setup' element={isAuthenticated ? <ProfileSetup/> : <Navigate to="/login" />}/>
-          <Route path='/' element={isAuthenticated ? <Home/> : <Navigate to="/login" />}/>
-          <Route path='/reels' element={isAuthenticated ? <Reels/> : <Navigate to="/login" />}/>
-          <Route path='/settings' element={isAuthenticated ? <Settings/> : <Navigate to="/login" />}/>
-          <Route path='/chat' element={isAuthenticated ? <Chat/> : <Navigate to="/login" />}/>
-          <Route path='/about-us' element={isAuthenticated ? <Aboutus/> : <Navigate to="/login" />}/>
-          <Route path='/twt_token' element={isAuthenticated ? <Twt_Token/> : <Navigate to="/login" />}/>
-          <Route path='/dashboard' element={isAuthenticated ? <Dashboard/> : <Navigate to="/login" />}/>
-          <Route path='/setting' element={isAuthenticated ? <Settings/> : <Navigate to="/login" />}/>
-          <Route path='/profile' element={isAuthenticated ? <Myprofile/> : <Navigate to="/login" />}/>
-        </Routes>
-      </div>
+    <div className="flex flex-col">
+      <ToastContainer />
+
+      {/* Sidebar */}
+      {!hideSidebar && <Sidebar />}
+
+      {/* Routes */}
+      <Routes>
+
+        {/* Public Route — Combined Login/Signup */}
+        <Route
+          path="/auth"
+          element={
+            authuser
+              ? authMode === "signup"
+                ? <Navigate to="/profile-setup" />
+                : <Navigate to="/" />
+              : <AuthPage />
+          }
+        />
+
+        {/* Protected Routes */}
+        <Route
+          path="/profile-setup"
+          element={authuser ? <ProfileSetup /> : <Navigate to="/auth" />}
+        />
+        <Route
+          path="/"
+          element={authuser ? <Home /> : <Navigate to="/auth" />}
+        />
+        <Route
+          path="/reels"
+          element={authuser ? <Reels /> : <Navigate to="/auth" />}
+        />
+        <Route
+          path="/settings"
+          element={authuser ? <Settings /> : <Navigate to="/auth" />}
+        />
+        <Route
+          path="/chat"
+          element={authuser ? <Chat /> : <Navigate to="/auth" />}
+        />
+        <Route
+          path="/about-us"
+          element={authuser ? <Aboutus /> : <Navigate to="/auth" />}
+        />
+        <Route
+          path="/twt_token"
+          element={authuser ? <Twt_Token /> : <Navigate to="/auth" />}
+        />
+        <Route
+          path="/dashboard"
+          element={authuser ? <Dashboard /> : <Navigate to="/auth" />}
+        />
+        <Route
+          path="/profile"
+          element={authuser ? <Myprofile /> : <Navigate to="/auth" />}
+        />
+      </Routes>
+
+      {/* Footer */}
       {!hideFooter && <Footer />}
     </div>
-  )
-}
+  );
+};
 
-export default App
+export default App;

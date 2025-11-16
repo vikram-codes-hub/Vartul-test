@@ -174,7 +174,7 @@ const Signup = () => {
           
           <div className="mt-8 text-center">
             <p className="text-gray-300">
-              Already have an account? <Link to="/login" className="bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent hover:from-blue-600 hover:to-purple-700 font-medium">Sign In</Link>
+              Already have an account?<Link to="/auth?mode=login"  className="bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent hover:from-blue-600 hover:to-purple-700 font-medium">Sign In</Link>
             </p>
           </div>
           

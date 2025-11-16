@@ -7,10 +7,10 @@ import { clearUserCache } from "../Utils/redishelper.js";
 //  Controller for user signup
 export const userSignup = async (req, res) => {
   try {
-    const { firstName, lastName, username, email, password, bio } = req.body;
+    const {fullname, username, email, password } = req.body;
 
     
-    if (!firstName || !lastName || !username || !email || !password) {
+    if (!fullname|| !username || !email || !password) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
@@ -20,18 +20,20 @@ export const userSignup = async (req, res) => {
       return res.status(400).json({ message: "User already exists" });
     }
 
+    const [firstName,...rest]=fullname.trim().split(" ");
+    const lastName=rest.join(" ")||"_"
     // Hash password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
     // Create new user
     const newUser = await User.create({
-      firstName,
-      lastName,
+     firstName,
+     lastName,
       username,
       email,
       password: hashedPassword,
-      bio,
+     
     });
 
     // Generate JWT token
@@ -93,6 +95,7 @@ export const userLogin = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
+
 
 
 //controller to get user profile
@@ -374,13 +377,15 @@ export const getAllUsers = async (req, res) => {
 };
 
 //Controleer for the completeuserprofile
-export const completeUserProfile=async(req,res)=>{
+export const completeUserProfile = async (req, res) => {
   try {
-    const {fullName,username,bio,profilePic,interests}=req.body;
-    const userId=req.user._id;
-     const [firstName, ...rest] = fullName.trim().split(" ");
-      const lastName = rest.join(" ");
-     const updatedUser = await User.findByIdAndUpdate(
+    const { fullName, gender, ageGroup, hobbies } = req.body;
+    const userId = req.user._id;
+
+    const [firstName, ...rest] = fullName.trim().split(" ");
+    const lastName = rest.join(" ");
+
+    const updatedUser = await User.findByIdAndUpdate(
       userId,
       {
         firstName,
@@ -388,24 +393,22 @@ export const completeUserProfile=async(req,res)=>{
         gender,
         ageGroup,
         hobbies,
-        interests,
-        profilePic,
+        profileCompleted: true
       },
       { new: true }
     ).select("-password");
-    await clearUserCache(req.user._id);
 
-   
     res.status(200).json({
       success: true,
       message: "Profile completed successfully",
-      user: updatedUser,
+      user: updatedUser
     });
   } catch (error) {
-    console.error("Error completing profile:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 };
+
+
 //user filling the interests and content categories during signup
 export const updateUserInterests = async (req, res) => {
   try {
