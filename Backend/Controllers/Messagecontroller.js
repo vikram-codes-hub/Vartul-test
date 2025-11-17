@@ -1,16 +1,15 @@
-import Message from '../Models/Chat.js'
-
+import Conversation from "../Models/Conversation.js";
+import Message from "../Models/Chat.js";
 import cloudinary from "../Config/cloudinary.js";
 import { getIO, UserSocketMap } from "../Utils/socket.js";
-import User from "../Models/User.js";
 
 export const sendMessage = async (req, res) => {
   try {
-    const { image, text,video} = req.body;
+    const { image, text, video } = req.body;
     const senderId = req.user._id;
     const receiverId = req.params.userId;
 
-    // Find or create conversation between sender and receiver
+    // 1. Find or Create Conversation
     let conversation = await Conversation.findOne({
       participants: { $all: [senderId, receiverId] },
     });
@@ -19,25 +18,29 @@ export const sendMessage = async (req, res) => {
       conversation = await Conversation.create({
         participants: [senderId, receiverId],
         lastMessage: text || "Media message",
+        lastMessageAt: Date.now(),
       });
     }
 
     let mediaUrl = null;
     let messageType = "text";
 
-    //  Handle media upload 
+    // 2. Media Uploads
     if (image) {
       const uploadRes = await cloudinary.uploader.upload(image);
       mediaUrl = uploadRes.secure_url;
       messageType = "image";
     }
-    if(video){
-      const uploadRes = await cloudinary.uploader.upload(video, { resource_type: "video" });
+
+    if (video) {
+      const uploadRes = await cloudinary.uploader.upload(video, {
+        resource_type: "video",
+      });
       mediaUrl = uploadRes.secure_url;
       messageType = "video";
     }
 
-    //  Create message linked to this conversation
+    // 3. Create a message
     const message = await Message.create({
       conversationId: conversation._id,
       senderId,
@@ -47,75 +50,100 @@ export const sendMessage = async (req, res) => {
       mediaUrl,
     });
 
-    //  Update conversation’s last message preview
+    // 4. Update conversation lastMessage
     if (text) conversation.lastMessage = text;
     else if (messageType === "image") conversation.lastMessage = "Image";
     else if (messageType === "video") conversation.lastMessage = "Video";
+
+    conversation.lastMessageAt = Date.now();
     await conversation.save();
 
-    //  Emit real-time message to receiver
-    const receiverSocketId = UserSocketMap[receiverId];
+    // 5. Real-time Socket Emit
     const io = getIO();
-    if (receiverSocketId && io) {
+    const receiverSocketId = UserSocketMap[receiverId];
+
+    if (receiverSocketId) {
       io.to(receiverSocketId).emit("newMessage", message);
     }
 
-    res.json({ success: true, message });
+    return res.json({ success: true, message });
+
   } catch (error) {
     console.error("Error sending message:", error);
-    res
-      .status(500)
-      .json({ success: false, error: "Failed to send message" });
+    res.status(500).json({
+      success: false,
+      error: "Failed to send message",
+    });
   }
 };
 
 
-//get users for sidebar
+// Get chat users for sidebar (only users who chatted with current user)
 export const getChatUsers = async (req, res) => {
   try {
     const userId = req.user._id;
 
-    // Fetch all users except current
-    const filteredUsers = await User.find({ _id: { $ne: userId } }).select(
-      "-password"
-    );
+    //  Find all messages involving the current user
+    const messages = await Message.find({
+      $or: [
+        { senderId: userId },
+        { receiverId: userId }
+      ]
+    });
 
+    //  Extract unique user IDs who chatted with me
+    const chatUserIds = new Set();
+
+    messages.forEach(msg => {
+      if (msg.senderId.toString() !== userId.toString()) {
+        chatUserIds.add(msg.senderId.toString());
+      }
+      if (msg.receiverId.toString() !== userId.toString()) {
+        chatUserIds.add(msg.receiverId.toString());
+      }
+    });
+
+    // Convert Set → Array
+    const userIds = Array.from(chatUserIds);
+
+    // If no chats yet
+    if (userIds.length === 0) {
+      return res.status(200).json({ success: true, users: [], unseenMessages: {} });
+    }
+
+    // 3. Fetch user details
+    const users = await User.find({ _id: { $in: userIds } }).select("-password");
+
+    // 4. Count unseen messages for each chat user
     const unseenMessages = {};
 
-    //  Count unseen messages
     await Promise.all(
-      filteredUsers.map(async (user) => {
-        const messages = await Message.find({
+      users.map(async (user) => {
+        const count = await Message.countDocuments({
           senderId: user._id,
           receiverId: userId,
           isRead: false,
         });
 
-        if (messages.length > 0) {
-          unseenMessages[user._id] = messages.length;
+        if (count > 0) {
+          unseenMessages[user._id] = count;
         }
       })
     );
 
-    //  Build result with unseenCount, isOnline, lastSeen
-    const result = filteredUsers.map((user) => ({
-      _id: user._id,
-      username: user.username,
-      profilePic: user.profilePic,
-      unseenCount: unseenMessages[user._id] || 0,
-      isOnline: !!UserSocketMap[user._id], //  online if present in socket map
-      lastSeen: user.lastSeen || null, //  last seen time
-    }));
+    res.status(200).json({
+      success: true,
+      users,
+      unseenMessages
+    });
 
-    res.status(200).json({ success: true, users: result });
   } catch (error) {
     console.error("Error fetching chat users:", error);
-    res.status(500).json({
-      success: false,
-      error: "Failed to fetch chat users",
-    });
+    res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
+
+
 //  Get all messages between two users (conversation chat)
 export const getMessages = async (req, res) => {
   try {
