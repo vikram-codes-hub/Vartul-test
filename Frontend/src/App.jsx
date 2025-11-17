@@ -18,6 +18,9 @@ import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 import { Usercontext } from "./Context/Usercontext";
+import BasicInfo from "./Pages/Basicinfo";
+import InterestsSetup from "./Pages/InterestsSetup";
+import ProfilePicture from "./Pages/ProfilePicture";
 
 const App = () => {
   const location = useLocation();
@@ -26,13 +29,17 @@ const App = () => {
   // Hide Sidebar on auth + profile setup pages
   const hideSidebar =
     location.pathname === "/auth" ||
-    location.pathname === "/profile-setup";
+    location.pathname === "/profile-setup/basic-info"||
+    location.pathname === "/profile-setup/interests"||
+    location.pathname === "/profile-setup/profile-picture";
 
   // Hide footer on specific pages
   const hideFooter =
     location.pathname.startsWith("/chat") ||
     location.pathname === "/auth" ||
-    location.pathname === "/profile-setup";
+    location.pathname === "/profile-setup/basic-info"||
+    location.pathname === "/profile-setup/interests"||
+    location.pathname === "/profile-setup/profile-picture";
 
   return (
     <div className="flex flex-col">
@@ -50,17 +57,18 @@ const App = () => {
           element={
             authuser
               ? authMode === "signup"
-                ? <Navigate to="/profile-setup" />
+                ? <Navigate to="/profile-setup/basic-info" />
                 : <Navigate to="/" />
               : <AuthPage />
           }
         />
 
         {/* Protected Routes */}
-        <Route
-          path="/profile-setup"
-          element={authuser ? <ProfileSetup /> : <Navigate to="/auth" />}
-        />
+        {/* {after the signup these routes to fill info these three} */}
+       <Route path="/profile-setup/basic-info" element={authuser ?<BasicInfo/> : <Navigate to="/auth" />} />
+<Route path="/profile-setup/interests" element={authuser ? <InterestsSetup/> : <Navigate to="/auth" />} />
+<Route path="/profile-setup/profile-picture" element={authuser ? <ProfilePicture/>: <Navigate to="/auth" />} />
+
         <Route
           path="/"
           element={authuser ? <Home /> : <Navigate to="/auth" />}

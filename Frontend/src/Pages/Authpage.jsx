@@ -75,10 +75,10 @@ const initialMode = params.get("mode") || "login";
 console.log(authuser)
   if (response?.success) {
     if (mode === "signup") {
-      navigate("/profile-setup");
+      navigate("/profile-setup/basic-info");
     
     } else {
-    navigate("/profile-setup");
+    navigate("/");
     }
   }
 };
