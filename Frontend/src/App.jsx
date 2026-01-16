@@ -21,6 +21,7 @@ import { Usercontext } from "./Context/Usercontext";
 import BasicInfo from "./Pages/Basicinfo";
 import InterestsSetup from "./Pages/InterestsSetup";
 import ProfilePicture from "./Pages/ProfilePicture";
+import EditProfile from "./Pages/Editporifle";
 
 const App = () => {
   const location = useLocation();
@@ -100,6 +101,10 @@ const App = () => {
         <Route
           path="/profile"
           element={authuser ? <Myprofile /> : <Navigate to="/auth" />}
+        />
+        <Route
+          path="/edit-profile"
+          element={authuser ? <EditProfile/> : <Navigate to="/auth" />}
         />
       </Routes>
 

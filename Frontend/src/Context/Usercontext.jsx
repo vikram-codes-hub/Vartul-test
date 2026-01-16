@@ -1,160 +1,202 @@
-import { useEffect, useState } from "react";
-import { Children } from "react";
-import { createContext } from "react";
-import axios from "axios"
+import { createContext, useEffect, useState } from "react";
+import axios from "axios";
 import { io } from "socket.io-client";
-import { toast, Toaster } from "react-hot-toast";
+import { toast } from "react-hot-toast";
 
+export const Usercontext = createContext();
 
-export const Usercontext=createContext();
-const backendUrl=import.meta.env.VITE_BACKEND_URL
+const backendUrl = import.meta.env.VITE_BACKEND_URL;
+axios.defaults.baseURL = backendUrl;
 
-axios.defaults.baseURL=backendUrl
-const UserContextProvider=(props)=>{
+const UserContextProvider = ({ children }) => {
+  const [token, settoken] = useState(localStorage.getItem("token"));
+  const [authMode, setAuthMode] = useState(null);
 
-      const [token, settoken] = useState(localStorage.getItem("token"));
-      const [authMode, setAuthMode] = useState(null);
+  const [authuser, setauthuser] = useState(null);
+  const [user, setuser] = useState(null);
 
-    const [authuser,setauthuser]=useState()
-    const [socket,setsocket]=useState(null)
-    const [onlineuser,setonlineuser]=useState([])
+  const [socket, setsocket] = useState(null);
+  const [onlineuser, setonlineuser] = useState([]);
 
- const checkauth = async () => {
+  const [stats, setStats] = useState({ posts: 0,followers: 0, following: 0});
+
+  const [loading, setLoading] = useState(true);
+
+  /* ================= CHECK AUTH ================= */
+  const checkauth = async () => {
     try {
-        const { data } = await axios.get('/api/auth/checkauth');
+      const { data } = await axios.get("/api/auth/checkauth");
 
-        if (data.success) {
-            setauthuser(data.user);
-            connectsocket(data.token);
-        }
-    } catch (error) {
-    
-        localStorage.removeItem("token");
-        settoken(null);
-        setauthuser(null);
-    }
-};
-
-
-    const Login=async({state,credentials})=>{
-        try {
-            const {data}=await axios.post(`/api/auth/${state}`,credentials)
-            console.log(data)
-            if(data.success){
-                setauthuser(data.UserData)
-                connectsocket(data.token)
-                axios.defaults.headers.common["token"]=data.token
-                 setAuthMode(state);
-                settoken(data.token)
-                localStorage.setItem("token",data.token)
-                toast.success(data.mssg)
-            }else{
-                toast.error(data.mssg)
-            }
-            return data
-        } catch (error) {
-            toast.error(error.message)
-        }
-    }
-
-    //complting the user profile after the singup
-    const completeprofile=async(basicinfo)=>{
-        try {
-            const {data}=await axios.post('/api/auth/profile-setup',basicinfo,{ headers: {token: localStorage.getItem("token") }})
-
-            if(data.success){
-                setauthuser(data.user)
-                return data
-            }else{
-                toast.error(data.mssg)
-            } } catch (error) {
-                console.log(error)
-                toast.error(error.mssg)
-            }
-   
-    }
-
-    //entering the interst and the content interst the user need
-const updateUserInterests = async ({ interests, contentCategories }) => {
-  try {
-    const { data } = await axios.post(
-      '/api/auth/interests',
-      { interests, contentCategories },
-      {
-        headers: {
-          token: localStorage.getItem("token")
-        }
+      if (data.success) {
+        setauthuser(data.user);
+        setuser(data.user);
+        connectsocket(data.user);
       }
-    );
+    } catch (error) {
+      localStorage.removeItem("token");
+      settoken(null);
+      setauthuser(null);
+      setuser(null);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    setauthuser(data.user);
+  /* ================= LOGIN / SIGNUP ================= */
+  const Login = async ({ state, credentials }) => {
+    try {
+      const { data } = await axios.post(`/api/auth/${state}`, credentials);
 
-    return data;
+      if (data.success) {
+        setauthuser(data.UserData);
+        setuser(data.UserData);
+        connectsocket(data.UserData);
+
+        axios.defaults.headers.common["token"] = data.token;
+        localStorage.setItem("token", data.token);
+        settoken(data.token);
+        setAuthMode(state);
+
+        toast.success(data.mssg);
+      } else {
+        toast.error(data.mssg);
+      }
+      return data;
+    } catch (error) {
+      toast.error("Login failed");
+    }
+  };
+
+  /* ================= COMPLETE PROFILE ================= */
+  const completeprofile = async (basicinfo) => {
+    try {
+      const { data } = await axios.post(
+        "/api/auth/profile-setup",
+        basicinfo,
+        { headers: { token } }
+      );
+
+      if (data.success) {
+        setauthuser(data.user);
+        setuser(data.user);
+        return data;
+      }
+    } catch {
+      toast.error("Profile setup failed");
+    }
+  };
+
+  /* ================= UPDATE INTERESTS ================= */
+  const updateUserInterests = async ({ interests, contentCategories }) => {
+    try {
+      const { data } = await axios.post(
+        "/api/auth/interests",
+        { interests, contentCategories },
+        { headers: { token } }
+      );
+
+      if (data.success) {
+        setauthuser(data.user);
+        setuser(data.user);
+      }
+
+      return data;
+    } catch {
+      return { success: false };
+    }
+  };
+
+  /* ================= FETCH CURRENT USER ================= */
+  const fetchuser = async () => {
+    try {
+      const { data } = await axios.get("/api/auth/getcurrentuser");
+      if (data.success) {
+        setuser(data.user);
+        setauthuser(data.user);
+      }
+    } catch {}
+  };
+  //fetch stats
+  const fetchStats = async (userId) => {
+  try {
+    const { data } = await axios.get(`/api/auth/get-stats/${userId}`);
+    if (data.success) {
+      setStats({
+        posts: data.postsCount,
+        followers: data.followersCount,
+        following: data.followingCount
+      });
+    }
   } catch (error) {
-    return { success: false };
+    console.log("Error fetching stats", error);
   }
 };
 
 
-    const connectsocket=async(UserData)=>{
-        if(!UserData || socket?.connected)return
+  /* ================= SOCKET ================= */
+  const connectsocket = (UserData) => {
+    if (!UserData || socket?.connected) return;
 
-        const newsocket=io(backendUrl,{
-            query:{userId:UserData._id}
-        })
+    const newsocket = io(backendUrl, {
+      query: { userId: UserData._id }
+    });
 
-          newsocket.on("connect", () => {
-    console.log("✅ Socket connected:", newsocket.id);
-  });
+    newsocket.on("connect", () => {
+      console.log("✅ Socket connected:", newsocket.id);
+    });
+
     newsocket.on("getOnlineUsers", (ids) => {
-    console.log("🔵 Received online users:", ids);
-    setonlineuser(ids);
-  });
+      setonlineuser(ids);
+    });
 
-  setsocket(newsocket);
-    }
+    setsocket(newsocket);
+  };
 
-  const Logout = async () => {
-    console.log("before logout:", token);
-
-   
+  /* ================= LOGOUT ================= */
+  const Logout = () => {
     socket?.disconnect();
     setsocket(null);
-
-   
     setauthuser(null);
+    setuser(null);
     setonlineuser([]);
-
-   
     localStorage.removeItem("token");
-
-    
     axios.defaults.headers.common["token"] = null;
-
-   
     settoken(null);
-
-    console.log("after logout:", token);
     toast.success("Logout successfully");
+  };
+
+  /* ================= INIT ================= */
+  useEffect(() => {
+    if (token) {
+      axios.defaults.headers.common["token"] = token;
+      checkauth();
+    } else {
+      setLoading(false);
+    }
+  }, [token]);
+
+  const values = {
+    token,
+    authuser,
+    user,
+    onlineuser,
+    socket,
+    loading,
+    stats,
+    Login,
+    Logout,
+    checkauth,
+    fetchuser,
+    updateUserInterests,
+    completeprofile,
+     fetchStats,
+  };
+
+  return (
+    <Usercontext.Provider value={values}>
+      {children}
+    </Usercontext.Provider>
+  );
 };
 
-    useEffect(()=>{
-        if(token){
-            axios.defaults.headers.common["token"]=token
-            checkauth()
-        }
-    },[token])
-
-
-    const values={
-      token,authuser,onlineuser,socket,Login,authMode,Logout,checkauth,updateUserInterests,completeprofile
-    }
-
-    return (
-        <Usercontext.Provider value={values}>
-            {props.children}
-        </Usercontext.Provider>
-    )
-}
-
-export default UserContextProvider
+export default UserContextProvider;

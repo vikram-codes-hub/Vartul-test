@@ -4,6 +4,8 @@ import { generatetoken } from "../Utils/generatetokens.js";
 import cloudinary from "../Config/cloudinary.js";
 import redisclient from "../Config/redis.js";
 import { clearUserCache } from "../Utils/redishelper.js";
+import Post_model from "../Models/Post_model.js";
+import Post from "../Models/Post_model.js";
 //  Controller for user signup
 export const userSignup = async (req, res) => {
   try {
@@ -55,18 +57,18 @@ export const userSignup = async (req, res) => {
   }
 };
 
-// 🟡 Controller for user login
+//  Controller for user login
 export const userLogin = async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const { email, password } = req.body;
 
     // Check fields
-    if (!username || !password) {
+    if (!email || !password) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
     // Check if user exists
-    const user = await User.findOne({ username });
+    const user = await User.findOne({ email });
     if (!user) {
       return res.status(400).json({ message: "Invalid credentials" });
     }
@@ -300,6 +302,34 @@ export const getFollowersAndFollowing=async(req,res)=>{
 
   } catch (error) {
     console.log("Error fetching followers and following:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+}
+
+//forn the folkolower and following  amnd p[ost count
+export const getUserStats=async(req,res)=>{
+  try {
+    const userId=req.params.id;
+    const cachedata=await redisclient.get(`userstats:${userId}`);
+    if(cachedata){
+      return res.json({success:true,...JSON.parse(cachedata),fromCache:true});
+    }
+    const user=await User.findById(userId);
+    if(!user){
+      return res.status(404).json({message:"User not found"});
+    }
+    const followersCount=user.followers.length;
+    const followingCount=user.following.length;
+    const postsCount=await Post.countDocuments({author:userId});
+    const response={
+      followersCount,
+      followingCount,
+      postsCount
+    };
+    await redisclient.setEx(`userstats:${userId}`,300,JSON.stringify(response));
+    res.json({success:true,...response});
+  } catch (error) {
+    console.log("Error fetching user stats:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 }

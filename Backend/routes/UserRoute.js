@@ -1,5 +1,5 @@
 import express from 'express';
-import { changeUserPassword, checkauth, completeUserProfile, deleteUserAccount, follow, getAllUsers, getCurrentUser, getFollowersAndFollowing, getUserProfile, searchUser, unfollow, updateUserInterests, updateUserProfile, userLogin, userSignup } from '../Controllers/Usercontroller.js'
+import { changeUserPassword, checkauth, completeUserProfile, deleteUserAccount, follow, getAllUsers, getCurrentUser, getFollowersAndFollowing, getUserProfile, getUserStats, searchUser, unfollow, updateUserInterests, updateUserProfile, userLogin, userSignup } from '../Controllers/Usercontroller.js'
 import { isLoggedIn } from '../Middelwares/Isloggeddin.js';
 
 const userrouter = express.Router();
@@ -25,6 +25,7 @@ userrouter.delete('/delete-profile',isLoggedIn,deleteUserAccount) //deleting use
 userrouter.post('/follow/:id',isLoggedIn,follow) //follow user
 userrouter.post('/unfollow/:id',isLoggedIn,unfollow) //unfollow user
 userrouter.get('/get-following-followers',isLoggedIn,getFollowersAndFollowing)
+userrouter.get('/get-stats/:id',isLoggedIn,getUserStats)
 
 //search route
 userrouter.get('/search/:key',isLoggedIn,searchUser) //search users by name or username

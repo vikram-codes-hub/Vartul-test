@@ -1,9 +1,14 @@
-import React, { useState } from 'react'
+import React, { useContext, useState } from 'react'
 import { Settings } from 'lucide-react'
 import SettingsModal from './Settingmodel';
+import { useNavigate } from 'react-router-dom';
+import { Usercontext } from '../../Context/Usercontext';
 const Hero = () => {
 
+  const navigate=useNavigate()
       const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+      const {fetchuser}=useContext(Usercontext)
   return (
     <div className="w-full bg-black min-h-screen text-white">
       {/* Profile Header */}
@@ -25,7 +30,7 @@ const Hero = () => {
             {/* Username and Buttons */}
             <div className="flex items-center gap-3 md:gap-5 mb-5">
               <h1 className="text-lg md:text-xl font-light">Demo 1</h1>
-              <button className="bg-gray-700 hover:bg-gray-600 px-3 md:px-6 py-1.5 rounded-lg text-xs md:text-sm font-semibold transition">
+              <button  onClick={() => navigate("/edit-profile")} className="bg-gray-700 hover:bg-gray-600 px-3 md:px-6 py-1.5 rounded-lg text-xs md:text-sm font-semibold transition">
                 Edit profile
               </button>
               <button className="bg-gray-700 hover:bg-gray-600 px-3 md:px-6 py-1.5 rounded-lg text-xs md:text-sm font-semibold transition">
