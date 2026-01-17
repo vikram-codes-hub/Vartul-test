@@ -73,6 +73,10 @@ const userSchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
+    profileCompleted: {
+  type: Boolean,
+  default: false
+},
 
     walletAddress: {
       type: String,
@@ -117,6 +121,10 @@ const userSchema = new mongoose.Schema(
         ref: "Post",
       },
     ],
+    postsCount: {
+      type: Number,
+      default: 0,
+    },
 
     likedPosts: [
       {

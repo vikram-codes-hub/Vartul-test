@@ -23,6 +23,7 @@ import InterestsSetup from "./Pages/InterestsSetup";
 import ProfilePicture from "./Pages/ProfilePicture";
 import EditProfile from "./Pages/Editporifle";
 
+
 const App = () => {
   const location = useLocation();
   const { authuser, authMode } = useContext(Usercontext);
@@ -53,16 +54,17 @@ const App = () => {
       <Routes>
 
         {/* Public Route — Combined Login/Signup */}
-        <Route
-          path="/auth"
-          element={
-            authuser
-              ? authMode === "signup"
-                ? <Navigate to="/profile-setup/basic-info" />
-                : <Navigate to="/" />
-              : <AuthPage />
-          }
-        />
+      <Route
+  path="/auth"
+  element={
+    authuser
+      ? authuser.profileCompleted
+        ? <Navigate to="/" />
+        : <Navigate to="/profile-setup/basic-info" />
+      : <AuthPage />
+  }
+/>
+
 
         {/* Protected Routes */}
         {/* {after the signup these routes to fill info these three} */}
@@ -82,6 +84,7 @@ const App = () => {
           path="/settings"
           element={authuser ? <Settings /> : <Navigate to="/auth" />}
         />
+       
         <Route
           path="/chat"
           element={authuser ? <Chat /> : <Navigate to="/auth" />}

@@ -16,7 +16,7 @@ const params = new URLSearchParams(location.search);
 const initialMode = params.get("mode") || "login";
 
   const [formData, setFormData] = useState({
-    // fields for both modes; signup will use fullName & username
+   
     email: '',
     password: '',
     fullname: '',
@@ -72,12 +72,12 @@ const initialMode = params.get("mode") || "login";
   });
 
   setLoading(false);
-console.log(authuser)
   if (response?.success) {
     if (mode === "signup") {
+      // console.log("navigating in signup")
       navigate("/profile-setup/basic-info");
-    
     } else {
+      // console.log("navigating in login")
     navigate("/");
     }
   }

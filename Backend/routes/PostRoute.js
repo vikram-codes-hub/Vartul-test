@@ -1,5 +1,4 @@
 import express from "express";
-import { isLoggedIn } from "../Middelwares/Isloggeddin.js";
 import {
   createPost,
   getFeedPosts,
@@ -7,26 +6,17 @@ import {
   likePost,
   commentOnPost,
   deletePost,
-} from '../Controllers/Postcontroller.js'
+} from "../Controllers/Postcontroller.js"
 
-const postRouter = express.Router();
+import { isLoggedIn } from '../Middelwares/Isloggeddin.js';
 
-// Create Post
-postRouter.post("/", isLoggedIn, createPost);
+const router = express.Router();
 
-// Get feed posts
-postRouter.get("/feed", isLoggedIn, getFeedPosts);
+router.post("/create", isLoggedIn, createPost);
+router.get("/feed", isLoggedIn, getFeedPosts);
+router.get("/user/:id", isLoggedIn, getUserPosts);
+router.put("/like/:postId", isLoggedIn, likePost);
+router.post("/comment/:postId", isLoggedIn, commentOnPost);
+router.delete("/delete/:postId", isLoggedIn, deletePost);
 
-// Get user posts
-postRouter.get("/user/:id", isLoggedIn, getUserPosts);
-
-// Like/Unlike post
-postRouter.post("/like/:postId", isLoggedIn, likePost);
-
-// Comment
-postRouter.post("/comment/:postId", isLoggedIn, commentOnPost);
-
-// Delete post
-postRouter.delete("/:postId", isLoggedIn, deletePost);
-
-export default postRouter;
+export default router;

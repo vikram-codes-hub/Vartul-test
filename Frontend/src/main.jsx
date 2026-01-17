@@ -7,17 +7,20 @@ import ChatContextProvider from './Context/Chat.jsx'
 import { Provider } from 'react-redux'
 import { store } from './store'
 import UserContextProvider from './Context/Usercontext.jsx'
+import { PostProvider } from './Context/PostContext.jsx'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <Provider store={store}>
       <BrowserRouter>
-     <UserContextProvider>
-        <ChatContextProvider>
+       <UserContextProvider>
+        <PostProvider>
+         <ChatContextProvider>
           <App />
-        </ChatContextProvider>
-     </UserContextProvider>
-      </BrowserRouter>
+         </ChatContextProvider>
+       </PostProvider>
+      </UserContextProvider>
+     </BrowserRouter>
     </Provider>
   </StrictMode>,
 )

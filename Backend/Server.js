@@ -102,7 +102,7 @@ app.use("/api/auth", userRouter);
 // Chat routes
 app.use("/api/messages",chatRouter);
 // Post routes
-app.use('/api/posts',postRouter)
+app.use('/api/post',postRouter)
 //story route
 app.use('/api/story',storyrouter)
 //notification route

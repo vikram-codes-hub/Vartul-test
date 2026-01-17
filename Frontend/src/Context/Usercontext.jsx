@@ -79,10 +79,11 @@ const UserContextProvider = ({ children }) => {
       if (data.success) {
         setauthuser(data.user);
         setuser(data.user);
-        return data;
+          return { success: true };
       }
     } catch {
       toast.error("Profile setup failed");
+       return { success: false };
     }
   };
 
@@ -98,6 +99,7 @@ const UserContextProvider = ({ children }) => {
       if (data.success) {
         setauthuser(data.user);
         setuser(data.user);
+           return { success: true };
       }
 
       return data;
@@ -105,6 +107,25 @@ const UserContextProvider = ({ children }) => {
       return { success: false };
     }
   };
+
+  /* ================= upload profile pic ================= */
+  const uploadProfilePicture = async (profilePicBase64) => {
+  try {
+    const { data } = await axios.put(
+      "/api/auth/update-profile",
+      { profilePic: profilePicBase64 },
+      { headers: { token } }
+    );
+    console.log("In the profile pic ",data)
+    if (data.success) {
+      setuser(data.updateuser);
+      return { success: true };
+    }
+  } catch (error) {
+    return { success: false };
+  }
+};
+
 
   /* ================= FETCH CURRENT USER ================= */
   const fetchuser = async () => {
@@ -126,11 +147,13 @@ const UserContextProvider = ({ children }) => {
         followers: data.followersCount,
         following: data.followingCount
       });
+      console.log("from user context",data)
     }
   } catch (error) {
     console.log("Error fetching stats", error);
   }
 };
+
 
 
   /* ================= SOCKET ================= */
@@ -183,6 +206,7 @@ const UserContextProvider = ({ children }) => {
     socket,
     loading,
     stats,
+    setStats,
     Login,
     Logout,
     checkauth,
@@ -190,6 +214,7 @@ const UserContextProvider = ({ children }) => {
     updateUserInterests,
     completeprofile,
      fetchStats,
+     uploadProfilePicture
   };
 
   return (

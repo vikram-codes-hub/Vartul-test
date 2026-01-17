@@ -3,6 +3,7 @@ import { Settings } from 'lucide-react'
 import SettingsModal from '../Components/Myprofile/Settingmodel';
 import { useNavigate } from 'react-router-dom';
 import { Usercontext } from '../Context/Usercontext';
+import { usePost } from '../Context/PostContext';
 
 const Myprofile = () => {
 
@@ -10,13 +11,16 @@ const Myprofile = () => {
       const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
       const { user, loading, fetchStats,stats } = useContext(Usercontext);
+      const {userPosts, fetchUserPosts}=usePost();
+  
 
 useEffect(() => {
   if (user?._id) {
     fetchStats(user._id);
+     fetchUserPosts(user._id);
   }
 }, [user]);
-
+    console.log("The user post are",userPosts)
 
   return (
     <div className="w-full bg-black min-h-screen text-white">
@@ -148,85 +152,65 @@ useEffect(() => {
       </div>
 
       {/* Posts Grid */}
-      <div className="max-w-4xl mx-auto px-4 md:px-8 py-1">
-        <div className="grid grid-cols-3 gap-1">
-          {/* Post 1 */}
-          <div className="aspect-square bg-gray-900 relative overflow-hidden cursor-pointer group">
-            <img 
-              src="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=600" 
-              className="w-full h-full object-cover transition"
-              alt="Post"
-            />
-            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm  bg-opacity-30 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-6">
-              <div className="flex items-center gap-2">
-                <svg className="w-6 h-6 fill-white" viewBox="0 0 24 24">
-                  <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-                </svg>
-                <span className="font-bold text-white">234</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <svg className="w-6 h-6 fill-white" viewBox="0 0 24 24">
-                  <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
-                </svg>
-                <span className="font-bold text-white">45</span>
-              </div>
-            </div>
-          </div>
-          
-          {/* Post 2 - Carousel */}
-          <div className="aspect-square bg-gray-900 relative overflow-hidden cursor-pointer group">
-            <img 
-              src="https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=600" 
-              className="w-full h-full object-cover transition"
-              alt="Post"
-            />
-            <div className="absolute top-2 right-2 z-10">
-              <svg className="w-5 h-5" fill="white" viewBox="0 0 24 24">
-                <path d="M3 5h4v14H3V5zm7 0h4v14h-4V5zm7 0h4v14h-4V5z"/>
-              </svg>
-            </div>
-            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm  bg-opacity-30 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-6">
-              <div className="flex items-center gap-2">
-                <svg className="w-6 h-6 fill-white" viewBox="0 0 24 24">
-                  <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-                </svg>
-                <span className="font-bold text-white text-lg">567</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <svg className="w-6 h-6 fill-white" viewBox="0 0 24 24">
-                  <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
-                </svg>
-                <span className="font-bold text-white text-lg">89</span>
-              </div>
-            </div>
+     {/* Posts Grid */}
+<div className="max-w-4xl mx-auto px-4 md:px-8 py-1">
+  <div className="grid grid-cols-3 gap-1">
+
+    {userPosts.length === 0 && (
+      <p className="col-span-3 text-center text-gray-500 mt-10">
+        No posts yet
+      </p>
+    )}
+
+    {userPosts.map((post) => (
+      <div
+        key={post._id}
+        className="aspect-square bg-gray-900 relative overflow-hidden cursor-pointer group"
+      >
+        {/* IMAGE / VIDEO */}
+        {post.mediaType === "image" ? (
+          <img
+            src={post.mediaUrl}
+            alt="Post"
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <video
+            src={post.mediaUrl}
+            className="w-full h-full object-cover"
+            muted
+          />
+        )}
+
+        {/* OVERLAY */}
+        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-6">
+
+          {/* LIKES */}
+          <div className="flex items-center gap-2">
+            <svg className="w-6 h-6 fill-white" viewBox="0 0 24 24">
+              <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+            </svg>
+            <span className="font-bold text-white">
+              {post.likes.length}
+            </span>
           </div>
 
-          {/* Post 3 */}
-          <div className="aspect-square  relative overflow-hidden cursor-pointer group">
-            <img 
-              src="https://images.unsplash.com/photo-1511632765486-a01980e01a18?w=600" 
-              className="w-full h-full object-cover transition"
-              alt="Post"
-            />
-            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm bg-opacity-30 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-6">
-              <div className="flex items-center gap-2">
-                <svg className="w-6 h-6 fill-white" viewBox="0 0 24 24">
-                  <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-                </svg>
-                {/*Post commenmts count*/}
-                <span className="font-bold text-white text-lg">123</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <svg className="w-6 h-6 fill-white" viewBox="0 0 24 24">
-                  <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
-                </svg>
-                  {/*Post like count*/}
-                <span className="font-bold text-white text-lg">32</span>
-              </div>
-            </div>
+          {/* COMMENTS */}
+          <div className="flex items-center gap-2">
+            <svg className="w-6 h-6 fill-white" viewBox="0 0 24 24">
+              <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
+            </svg>
+            <span className="font-bold text-white">
+              {post.comments.length}
+            </span>
           </div>
+
         </div>
       </div>
+    ))}
+  </div>
+</div>
+
       {/* Settings Modal */}
 <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
     </div>

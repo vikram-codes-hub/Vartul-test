@@ -12,12 +12,17 @@ import {
   CiSettings, 
   CiLogout,
   CiMenuFries,
+
 } from "react-icons/ci"
+import { HiOutlinePlus } from "react-icons/hi2";
 import { FaCircleInfo } from "react-icons/fa6";
 import { Usercontext } from '../Context/Usercontext';
+import CreatePostModal from './CreatePostModel';
 
 const Sidebar = () => {
   const [isCollapsed, setIsCollapsed] = useState(false)
+  const [openCreate, setOpenCreate] = useState(false);
+
 
   const {Logout}=useContext(Usercontext)
 
@@ -46,6 +51,7 @@ const Sidebar = () => {
     { path: '/search', icon: CiSearch, label: 'Search' },
     { path: '/reels', icon: CiVideoOn, label: 'Reels' },
     { path: '/chat', icon: CiChat1, label: 'Messages' },
+    { action: 'create', icon: HiOutlinePlus, label: 'Create' },
     { path: '/profile', icon: CiUser, label: 'Profile' },
     { path: '/twt_token', icon: CiCoinInsert, label: 'Twt Token' },
     { path: '/dashboard', icon: CiGrid41, label: 'Dashboard' },
@@ -77,31 +83,49 @@ const Sidebar = () => {
           
           {/* Navigation Links */}
           <nav className='flex flex-col mt-4 px-3'>
-            {navItems.map((item) => {
-              const IconComponent = item.icon
-              return (
-                <NavLink 
-                  key={item.path}
-                  to={item.path}
-                  className={({ isActive }) =>
-                    `flex items-center ${isCollapsed ? 'justify-center' : 'gap-4'} p-3 mx-2 mb-2 rounded-xl transition-all duration-200 group ${
-                      isActive 
-                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/25' 
-                        : 'text-gray-300 hover:bg-gray-800 hover:text-white hover:shadow-lg'
-                    }`
-                  }
-                  title={isCollapsed ? item.label : ''}
-                >
-                  <IconComponent className='w-6 h-6 flex-shrink-0' />
-                  {!isCollapsed && (
-                    <p className='text-base font-medium'>
-                      {item.label}
-                    </p>
-                  )}
-                </NavLink>
-              )
-            })}
-          </nav>
+{navItems.map((item) => {
+  const IconComponent = item.icon;
+
+  // CREATE POST (MODAL)
+  if (item.action === "create") {
+    return (
+      <button
+        key={item.label}
+        onClick={() => setOpenCreate(true)}
+        className={`flex items-center ${
+          isCollapsed ? "justify-center" : "gap-4"
+        } p-3 mx-2 mb-2 rounded-xl text-gray-300 hover:bg-gray-800 hover:text-white transition-all`}
+        title={isCollapsed ? item.label : ""}
+      >
+        <IconComponent className="w-6 h-6" />
+        {!isCollapsed && <p className="text-base font-medium">{item.label}</p>}
+      </button>
+    );
+  }
+
+  // NORMAL NAV LINKS
+  return (
+    <NavLink
+      key={item.path}
+      to={item.path}
+      className={({ isActive }) =>
+        `flex items-center ${
+          isCollapsed ? "justify-center" : "gap-4"
+        } p-3 mx-2 mb-2 rounded-xl transition-all ${
+          isActive
+            ? "bg-blue-600 text-white"
+            : "text-gray-300 hover:bg-gray-800 hover:text-white"
+        }`
+      }
+      title={isCollapsed ? item.label : ""}
+    >
+      <IconComponent className="w-6 h-6" />
+      {!isCollapsed && <p className="text-base font-medium">{item.label}</p>}
+    </NavLink>
+  );
+})}
+</nav>
+
         </div>
         
         {/* Logout Button */}
@@ -166,6 +190,12 @@ const Sidebar = () => {
           })}
         </nav>
       </div>
+
+      <CreatePostModal
+  open={openCreate}
+  onClose={() => setOpenCreate(false)}
+/>
+
     </>
   )
 }

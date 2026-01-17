@@ -1,5 +1,5 @@
 import express from 'express';
-import { changeUserPassword, checkauth, completeUserProfile, deleteUserAccount, follow, getAllUsers, getCurrentUser, getFollowersAndFollowing, getUserProfile, getUserStats, searchUser, unfollow, updateUserInterests, updateUserProfile, userLogin, userSignup } from '../Controllers/Usercontroller.js'
+import { changeUserPassword, checkauth, completeUserProfile, deleteUserAccount, follow, getAllUsers, getCurrentUser, getFollowersAndFollowing, getUserProfile, getUserStats, searchUser, unfollow, updateUserInterests, updateUserProfile, uploadProfilePic, userLogin, userSignup } from '../Controllers/Usercontroller.js'
 import { isLoggedIn } from '../Middelwares/Isloggeddin.js';
 
 const userrouter = express.Router();
@@ -11,6 +11,7 @@ userrouter.post('/login',userLogin);
 userrouter.get('/checkauth',isLoggedIn,checkauth)
 userrouter.post("/profile-setup",isLoggedIn,completeUserProfile);
 userrouter.post("/interests",isLoggedIn,updateUserInterests);
+userrouter.put('/upload-profile-picture',isLoggedIn,uploadProfilePic);
 
 //password Routes
 userrouter.post('/change-password',isLoggedIn,changeUserPassword);

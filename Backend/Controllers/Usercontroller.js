@@ -320,12 +320,14 @@ export const getUserStats=async(req,res)=>{
     }
     const followersCount=user.followers.length;
     const followingCount=user.following.length;
-    const postsCount=await Post.countDocuments({author:userId});
+    const postsCount=user.postsCount;
+    console.log("Posts count:", postsCount);
     const response={
       followersCount,
       followingCount,
       postsCount
     };
+  
     await redisclient.setEx(`userstats:${userId}`,300,JSON.stringify(response));
     res.json({success:true,...response});
   } catch (error) {
@@ -380,6 +382,7 @@ export const searchUser=async(req,res)=>{
 export const getCurrentUser = async (req, res) => {
   try {
     const user = await User.findById(req.user._id).select("-password");
+    console.log("Current user data:", user);
     res.status(200).json({ success: true, user });
   } catch (error) {
     console.error("Error fetching current user:", error);
@@ -465,6 +468,7 @@ export const updateUserInterests = async (req, res) => {
       success: true,
       message: "Interests and content preferences updated successfully",
       user: updatedUser,
+      profileCompleted: true
     });
   } catch (error) {
     console.error("Error updating interests:", error);
@@ -482,4 +486,19 @@ export const checkauth = async (req, res) => {
   }
 };
 
+//contorller to upload profile pric after the signup
+export const uploadProfilePic=async(req,res)=>{
+  try {
+    const {profilePic}=req.body;
+    const userId=req.user._id;
+    const uploadedImage=cloudinary.uploader.upload(profilePic)
+    const updateuser= await User.findByIdAndUpdate(userId,{
+        profilePic:(await uploadedImage).secure_url,
+    },{new:true})
+    res.json({success:true,updateuser});
+  } catch (error) {
+    console.error("Error uploading profile picture:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+}
 //controller to forget password 
