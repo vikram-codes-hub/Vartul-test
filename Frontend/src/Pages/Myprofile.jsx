@@ -11,7 +11,7 @@ const Myprofile = () => {
       const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
       const { user, loading, fetchStats,stats } = useContext(Usercontext);
-      const {userPosts, fetchUserPosts}=usePost();
+      const {userPosts, fetchUserPosts,UserPosts}=usePost();
   
 
 useEffect(() => {
@@ -20,7 +20,7 @@ useEffect(() => {
      fetchUserPosts(user._id);
   }
 }, [user]);
-    console.log("The user post are",userPosts)
+   
 
   return (
     <div className="w-full bg-black min-h-screen text-white">

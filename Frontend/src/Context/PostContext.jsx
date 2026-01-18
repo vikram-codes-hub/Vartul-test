@@ -11,7 +11,7 @@ export const PostProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(1);
-  const {token,fetchStats}=useContext(Usercontext)
+  const {token, setuser}=useContext(Usercontext)
 
 
 
@@ -79,12 +79,14 @@ export const PostProvider = ({ children }) => {
         { headers: { token } }
       );
   
-       await fetchStats();
+       const newPost = res.data.post;
       // Add post to feed instantly
-      setFeedPosts((prev) => [res.data.post, ...prev]);
-
-
-
+      setFeedPosts((prev) => [newPost, ...prev]);
+        setUserPosts((prev) => [newPost, ...prev]);
+        setuser((prev) => ({
+    ...prev,
+    postsCount: prev.postsCount + 1,
+  }));
       return res.data.post;
     } catch (error) {
       console.error("Create post error:", error);

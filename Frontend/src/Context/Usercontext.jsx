@@ -206,6 +206,7 @@ const UserContextProvider = ({ children }) => {
     socket,
     loading,
     stats,
+     setuser,
     setStats,
     Login,
     Logout,

@@ -321,7 +321,7 @@ export const getUserStats=async(req,res)=>{
     const followersCount=user.followers.length;
     const followingCount=user.following.length;
     const postsCount=user.postsCount;
-    console.log("Posts count:", postsCount);
+    console.log("Posts count from the usercontroller :", postsCount);
     const response={
       followersCount,
       followingCount,

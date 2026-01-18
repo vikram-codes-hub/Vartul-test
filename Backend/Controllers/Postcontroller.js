@@ -1,6 +1,7 @@
 import Post from "../Models/Post_model.js";
 import User from "../Models/User.js";
 import cloudinary from "../Config/cloudinary.js";
+import redisClient from "../Config/redis.js";
 
 
 // ==============================
@@ -47,6 +48,8 @@ export const createPost = async (req, res) => {
       { $inc: { postsCount: 1 } },
       { new: true }
     );
+    await redisClient.del(`userstats:${userId}`);
+
    
 
 
