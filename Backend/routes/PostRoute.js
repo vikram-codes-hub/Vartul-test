@@ -6,6 +6,7 @@ import {
   likePost,
   commentOnPost,
   deletePost,
+  getPostById,
 } from "../Controllers/Postcontroller.js"
 
 import { isLoggedIn } from '../Middelwares/Isloggeddin.js';
@@ -18,5 +19,6 @@ router.get("/user/:id", isLoggedIn, getUserPosts);
 router.put("/like/:postId", isLoggedIn, likePost);
 router.post("/comment/:postId", isLoggedIn, commentOnPost);
 router.delete("/delete/:postId", isLoggedIn, deletePost);
+router.get("/:postId", isLoggedIn, getPostById);
 
 export default router;

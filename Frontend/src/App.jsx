@@ -22,6 +22,7 @@ import BasicInfo from "./Pages/Basicinfo";
 import InterestsSetup from "./Pages/InterestsSetup";
 import ProfilePicture from "./Pages/ProfilePicture";
 import EditProfile from "./Pages/Editporifle";
+import PostModal from "./Components/Postmodel";
 
 
 const App = () => {
@@ -84,6 +85,7 @@ const App = () => {
           path="/settings"
           element={authuser ? <Settings /> : <Navigate to="/auth" />}
         />
+        <Route path="/p/:postId" element={<PostModal />} />
        
         <Route
           path="/chat"

@@ -11,7 +11,7 @@ export const PostProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(1);
-  const {token, setuser}=useContext(Usercontext)
+  const {token, setuser,user}=useContext(Usercontext)
 
 
 
@@ -97,60 +97,162 @@ export const PostProvider = ({ children }) => {
   // ==============================
   // LIKE / UNLIKE POST
   // ==============================
-  const toggleLike = async (postId) => {
-    try {
-      const res = await axios.put(
-        `/api/post/like/${postId}`,
-        {},
-        authHeader
-      );
+const toggleLike = async (postId) => {
+  if (!user?._id) return;
 
-      setFeedPosts((prev) =>
-        prev.map((post) =>
-          post._id === postId
-            ? {
-                ...post,
-                likes: res.data.liked
-                  ? [...post.likes, "temp"]
-                  : post.likes.slice(0, -1),
-              }
-            : post
-        )
-      );
 
-      return res.data;
-    } catch (error) {
-      console.error("Like error:", error);
-    }
-  };
+  setFeedPosts((prev) =>
+    prev.map((post) =>
+      post._id === postId
+        ? {
+            ...post,
+            likes: post.likes.includes(user._id)
+              ? post.likes.filter((id) => id !== user._id)
+              : [...post.likes, user._id],
+          }
+        : post
+    )
+  );
+
+  setUserPosts((prev) =>
+    prev.map((post) =>
+      post._id === postId
+        ? {
+            ...post,
+            likes: post.likes.includes(user._id)
+              ? post.likes.filter((id) => id !== user._id)
+              : [...post.likes, user._id],
+          }
+        : post
+    )
+  );
+
+  try {
+    await axios.put(
+      `/api/post/like/${postId}`,
+      {},
+      { headers: { token } }
+    );
+  } catch (error) {
+    console.error("Like failed, reverting", error);
+
+    // Rollback
+    setFeedPosts((prev) =>
+      prev.map((post) =>
+        post._id === postId
+          ? {
+              ...post,
+              likes: post.likes.includes(user._id)
+                ? post.likes.filter((id) => id !== user._id)
+                : [...post.likes, user._id],
+            }
+          : post
+      )
+    );
+
+    setUserPosts((prev) =>
+      prev.map((post) =>
+        post._id === postId
+          ? {
+              ...post,
+              likes: post.likes.includes(user._id)
+                ? post.likes.filter((id) => id !== user._id)
+                : [...post.likes, user._id],
+            }
+          : post
+      )
+    );
+  }
+};
+
 
   // ==============================
   // COMMENT ON POST
   // ==============================
-  const commentOnPost = async (postId, text) => {
-    try {
-      const res = await axios.post(
-        `/api/post/comment/${postId}`,
-        { text },
-        authHeader
-      );
+const commentOnPost = async (postId, text) => {
+  if (!text.trim() || !user?._id) return;
 
-      setFeedPosts((prev) =>
-        prev.map((post) =>
-          post._id === postId
-            ? { ...post, comments: res.data.comments }
-            : post
-        )
-      );
-     
-
-
-      return res.data;
-    } catch (error) {
-      console.error("Comment error:", error);
-    }
+  // Optimistic update with text field included
+  const optimisticComment = {
+    _id: Date.now().toString(),
+    text: text.trim(), // ✅ ADD THIS - the actual comment text
+    userId: {
+      _id: user._id,
+      username: user.username,
+      profilePic: user.profilePic,
+    },
+    createdAt: new Date(),
   };
 
+  // Update user posts optimistically
+  setUserPosts((prev) =>
+    prev.map((post) =>
+      post._id === postId
+        ? { ...post, comments: [...post.comments, optimisticComment] }
+        : post
+    )
+  );
+
+  // Update feed posts optimistically
+  setFeedPosts((prev) =>
+    prev.map((post) =>
+      post._id === postId
+        ? { ...post, comments: [...post.comments, optimisticComment] }
+        : post
+    )
+  );
+
+  // API call
+  try {
+    const res = await axios.post(
+      `/api/post/comment/${postId}`,
+      { text },
+      { headers: { token } }
+    );
+
+    // Replace optimistic data with real data from backend
+    setUserPosts((prev) =>
+      prev.map((post) =>
+        post._id === postId
+          ? { ...post, comments: res.data.comments }
+          : post
+      )
+    );
+
+    setFeedPosts((prev) =>
+      prev.map((post) =>
+        post._id === postId
+          ? { ...post, comments: res.data.comments }
+          : post
+      )
+    );
+  } catch (error) {
+    console.error("Comment error:", error);
+    
+    // Rollback optimistic update on error
+    setUserPosts((prev) =>
+      prev.map((post) =>
+        post._id === postId
+          ? { 
+              ...post, 
+              comments: post.comments.filter(c => c._id !== optimisticComment._id) 
+            }
+          : post
+      )
+    );
+
+    setFeedPosts((prev) =>
+      prev.map((post) =>
+        post._id === postId
+          ? { 
+              ...post, 
+              comments: post.comments.filter(c => c._id !== optimisticComment._id) 
+            }
+          : post
+      )
+    );
+  }
+};
   return (
     <PostContext.Provider
       value={{

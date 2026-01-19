@@ -112,11 +112,13 @@ export const getUserPosts = async (req, res) => {
   try {
     const userId = req.params.id;
 
-    const posts = await Post.find({ userId })
-      .sort({ createdAt: -1 });
+  const posts = await Post.find({ userId })
+  .sort({ createdAt: -1 })
+  .populate("userId", "username profilePic")
 
       const postcount=await User.findById(userId).select("postsCount");
-      console.log("User post count:", postcount.postsCount);
+     
+
     res.json({ success: true, posts, postCount: postcount.postsCount });
   } catch (error) {
     console.error("User posts error:", error);
@@ -180,25 +182,75 @@ export const commentOnPost = async (req, res) => {
       });
     }
 
+    // 1️⃣ Find post by ID (NOT feed query)
     const post = await Post.findById(postId);
     if (!post) {
-      return res.status(404).json({ success: false, error: "Post not found" });
+      return res.status(404).json({
+        success: false,
+        error: "Post not found",
+      });
     }
 
+    // 2️⃣ Push comment
     post.comments.push({
       userId,
       text,
       createdAt: new Date(),
     });
 
+    // 3️⃣ Save post
     await post.save();
 
-    res.json({ success: true, comments: post.comments });
+    // 4️⃣ Re-fetch WITH POPULATED COMMENTS
+    const populatedPost = await Post.findById(postId)
+      .populate("comments.userId", "username profilePic");
+
+    // 5️⃣ Send populated comments
+    res.status(200).json({
+      success: true,
+      comments: populatedPost.comments,
+    });
+
   } catch (error) {
     console.error("Comment error:", error);
-    res.status(500).json({ success: false, error: "Failed to add comment" });
+    res.status(500).json({
+      success: false,
+      error: "Failed to add comment",
+    });
   }
 };
+
+//open post by id
+// Backend: Get single post
+export const getPostById = async (req, res) => {
+  try {
+    const { postId } = req.params;
+    
+    const post = await Post.findById(postId)
+      .populate("userId", "username profilePic")
+      .populate("comments.userId", "username profilePic");
+    
+    if (!post) {
+      return res.status(404).json({
+        success: false,
+        error: "Post not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      post,
+    });
+  } catch (error) {
+    console.error("Get post error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to fetch post",
+    });
+  }
+};
+
+
 
 
 // ==============================
