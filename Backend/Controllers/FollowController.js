@@ -82,6 +82,7 @@ export const followUser = async (req, res) => {
         await clearFollowCache(currentUserId, req.app.locals.redisClient);
         await clearFollowCache(userToFollowId, req.app.locals.redisClient);
       }
+      console.log('Follow cache cleared for users:', currentUserId, userToFollowId);
 
       res.status(201).json({
         success: true,
@@ -165,7 +166,7 @@ export const unfollowUser = async (req, res) => {
         await clearFollowCache(currentUserId, req.app.locals.redisClient);
         await clearFollowCache(userToUnfollowId, req.app.locals.redisClient);
       }
-
+console.log('Unfollow cache cleared for users:', currentUserId, userToUnfollowId);
       res.status(200).json({
         success: true,
         message: 'User unfollowed successfully',
@@ -244,7 +245,7 @@ export const getFollowers = async (req, res) => {
     if (req.app.locals.redisClient) {
       await req.app.locals.redisClient.setEx(cacheKey, 300, JSON.stringify(response));
     }
-
+console.log("The response for followers is ", response);
     res.status(200).json({
       success: true,
       ...response
@@ -328,55 +329,7 @@ export const getFollowing = async (req, res) => {
   }
 };
 
-// Get user stats (improved version of your getUserStats)
-export const getUserStats = async (req, res) => {
-  try {
-    const userId = req.params.id;
-    
-    // Check cache
-    const cacheKey = `userstats:${userId}`;
-    if (req.app.locals.redisClient) {
-      const cachedData = await req.app.locals.redisClient.get(cacheKey);
-      if (cachedData) {
-        return res.json({ 
-          success: true, 
-          ...JSON.parse(cachedData), 
-          fromCache: true 
-        });
-      }
-    }
 
-    // Get user with stats
-    const user = await User.findById(userId).select('followersCount followingCount postsCount');
-    
-    if (!user) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'User not found' 
-      });
-    }
-
-    const response = {
-      followersCount: user.followersCount || 0,
-      followingCount: user.followingCount || 0,
-      postsCount: user.postsCount || 0
-    };
-
-    // Cache for 5 minutes
-    if (req.app.locals.redisClient) {
-      await req.app.locals.redisClient.setEx(cacheKey, 300, JSON.stringify(response));
-    }
-
-    res.json({ success: true, ...response });
-
-  } catch (error) {
-    console.error('Error fetching user stats:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Internal server error' 
-    });
-  }
-};
 
 // Check follow status
 export const checkFollowStatus = async (req, res) => {
@@ -395,6 +348,7 @@ export const checkFollowStatus = async (req, res) => {
       follower: targetUserId,
       following: currentUserId
     });
+
 
     res.status(200).json({
       success: true,

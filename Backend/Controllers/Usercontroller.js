@@ -201,34 +201,54 @@ export const changeUserPassword=async(req,res)=>{
 
 
 //forn the folkolower and following  amnd p[ost count
-export const getUserStats=async(req,res)=>{
+export const getUserStats = async (req, res) => {
   try {
-    const userId=req.params.id;
-    const cachedata=await redisclient.get(`userstats:${userId}`);
-    if(cachedata){
-      return res.json({success:true,...JSON.parse(cachedata),fromCache:true});
+    const userId = req.params.id;
+    
+    // Check cache
+    const cacheKey = `userstats:${userId}`;
+    if (req.app.locals.redisClient) {
+      const cachedData = await req.app.locals.redisClient.get(cacheKey);
+      if (cachedData) {
+        return res.json({ 
+          success: true, 
+          ...JSON.parse(cachedData), 
+          fromCache: true 
+        });
+      }
     }
-    const user=await User.findById(userId);
-    if(!user){
-      return res.status(404).json({message:"User not found"});
+
+    // Get user with stats
+    const user = await User.findById(userId).select('followersCount followingCount postsCount');
+    
+    if (!user) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'User not found' 
+      });
     }
-    const followersCount=user.followers.length;
-    const followingCount=user.following.length;
-    const postsCount=user.postsCount;
-    console.log("Posts count from the usercontroller :", postsCount);
-    const response={
-      followersCount,
-      followingCount,
-      postsCount
+
+    const response = {
+      followersCount: user.followersCount || 0,
+      followingCount: user.followingCount || 0,
+      postsCount: user.postsCount || 0
     };
-  
-    await redisclient.setEx(`userstats:${userId}`,300,JSON.stringify(response));
-    res.json({success:true,...response});
+
+    // Cache for 5 minutes
+    if (req.app.locals.redisClient) {
+      await req.app.locals.redisClient.setEx(cacheKey, 300, JSON.stringify(response));
+    }
+
+    res.json({ success: true, ...response });
+
   } catch (error) {
-    console.log("Error fetching user stats:", error);
-    res.status(500).json({ message: "Internal server error" });
+    console.error('Error fetching user stats:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Internal server error' 
+    });
   }
-}
+};
 //to search the user bu his username or name
 export const searchUser = async (req, res) => {
   try {
