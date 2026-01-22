@@ -1,6 +1,7 @@
 import express from 'express';
-import { changeUserPassword, checkauth, completeUserProfile, deleteUserAccount, follow, getAllUsers, getCurrentUser, getFollowersAndFollowing, getUserProfile, getUserStats, searchUser, unfollow, updateUserInterests, updateUserProfile, uploadProfilePic, userLogin, userSignup } from '../Controllers/Usercontroller.js'
+import { changeUserPassword, checkauth, completeUserProfile, deleteUserAccount, getAllUsers, getCurrentUser, getUserProfile, getUserStats, searchUser, updateUserInterests, updateUserProfile, uploadProfilePic, userLogin, userSignup } from '../Controllers/Usercontroller.js'
 import { isLoggedIn } from '../Middelwares/Isloggeddin.js';
+import { checkFollowStatus, followUser, getFollowers, getFollowing, unfollowUser } from '../Controllers/FollowController.js';
 
 const userrouter = express.Router();
 
@@ -23,9 +24,6 @@ userrouter.put('/update-profile',isLoggedIn,updateUserProfile) //updating user p
 userrouter.delete('/delete-profile',isLoggedIn,deleteUserAccount) //deleting user account
 
 //Social route
-userrouter.post('/follow/:id',isLoggedIn,follow) //follow user
-userrouter.post('/unfollow/:id',isLoggedIn,unfollow) //unfollow user
-userrouter.get('/get-following-followers',isLoggedIn,getFollowersAndFollowing)
 userrouter.get('/get-stats/:id',isLoggedIn,getUserStats)
 
 //search route
@@ -36,6 +34,18 @@ userrouter.get('/all',isLoggedIn,getAllUsers) //get all users
 userrouter.put('/comeple-profile',isLoggedIn,completeUserProfile)
 userrouter.put('/update-interests-categories',isLoggedIn,updateUserProfile)
 
+//follow routes
+
+userrouter.post('/:id/follow', isLoggedIn, followUser);
+userrouter.post('/:id/unfollow', isLoggedIn, unfollowUser);
+
+// Get lists (with pagination)
+userrouter.get('/:id/followers', isLoggedIn, getFollowers);
+userrouter.get('/:id/following', isLoggedIn, getFollowing);
+
+
+// Check status
+userrouter.get('/:id/follow-status', isLoggedIn, checkFollowStatus);
 
 
 export default userrouter;

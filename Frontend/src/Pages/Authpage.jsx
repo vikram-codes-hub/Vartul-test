@@ -19,8 +19,7 @@ const initialMode = params.get("mode") || "login";
    
     email: '',
     password: '',
-    fullname: '',
-    username: ''
+    fullname: ''
   });
   const [loading, setLoading] = useState(false);
 
@@ -40,7 +39,7 @@ const initialMode = params.get("mode") || "login";
       email: '',
       password: '',
       fullName: '',
-      username: ''
+ 
     });
   };
 
@@ -56,12 +55,12 @@ const initialMode = params.get("mode") || "login";
   e.preventDefault();
   setLoading(true);
 
-  const { email, password, fullname, username } = formData;
+  const { email, password, fullname } = formData;
 
   let credentials;
 
   if (mode === "signup") {
-    credentials = { fullname, username, email, password };
+    credentials = { fullname, email, password };
   } else {
     credentials = { email, password };
   }
@@ -175,19 +174,7 @@ const initialMode = params.get("mode") || "login";
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <label htmlFor="username" className="text-sm font-medium text-gray-300 block">Username</label>
-                  <input
-                    id="username"
-                    type="text"
-                    name="username"
-                    placeholder="Choose a unique username"
-                    value={formData.username}
-                    onChange={handleChange}
-                    required={mode === 'signup'}
-                    className="w-full p-3 bg-black border border-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
-                  />
-                </div>
+               
               </>
             )}
 

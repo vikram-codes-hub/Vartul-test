@@ -9,10 +9,10 @@ import Post from "../Models/Post_model.js";
 //  Controller for user signup
 export const userSignup = async (req, res) => {
   try {
-    const {fullname, username, email, password } = req.body;
+    const {fullname,email, password } = req.body;
 
     
-    if (!fullname|| !username || !email || !password) {
+    if (!fullname|| !email || !password) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
@@ -32,7 +32,6 @@ export const userSignup = async (req, res) => {
     const newUser = await User.create({
      firstName,
      lastName,
-      username,
       email,
       password: hashedPassword,
      
@@ -197,114 +196,9 @@ export const changeUserPassword=async(req,res)=>{
 }
 
 
-//contoler to follow user 
-export const follow=async(req,res)=>{
-    try {
-        const userIdToFollow=req.params.id;
-        const currentUserId=req.user._id;
-
-        if(userIdToFollow===currentUserId){
-            return res.status(400).json({message:"You cannot follow yourself"});
-        }
-        const userToFollow=await User.findById(userIdToFollow);
-        const currentUser=await User.findById(currentUserId);
-         if (!userToFollow || !currentUser) {
-      return res.status(404).json({ message: "User not found" });
-    }
-        if(currentUser.following.includes(userIdToFollow)){
-          return res.status(400).json({ message: "You already follow this user" });
-
-        }
-        userToFollow.followers.push(currentUserId);
-        currentUser.following.push(userIdToFollow);
-        await userToFollow.save();
-        await currentUser.save();
-        await clearUserCache(currentUserId);
-await clearUserCache(userIdToFollow);
-
-        res.json({success:true,message:"User followed successfully"});
-
-    } catch (error) {
-        console.log("Error in follow/unfollow user:", error);
-        res.status(500).json({ message: "Internal server error" });
-    }
-}
-
-//unfollow user controller
-export const unfollow=async(req,res)=>{
-    try {
-        const userIdToUnfollow=req.params.id;
-        const currentUserId=req.user._id;
-
-        if(userIdToUnfollow===currentUserId){
-            return res.status(400).json({message:"You cannot unfollow yourself"});
-        }
-         if (!userIdToUnfollow || !currentUserId) {
-      return res.status(404).json({ message: "User not found" });
-    }
-      if (!userIdToUnfollow.followers.includes(currentUserId)) {
-      return res.status(400).json({ message: "You are not following this user" });
-    }
-
-       userIdToUnfollow.followers = userIdToUnfollow.followers.filter(
-      (userId) => userId.toString() !== currentUserId
-    );
-    currentUserId.following = currentUserId.following.filter(
-      (userId) => userId.toString() !== id
-    );
-
-        await userIdToUnfollow.save();
-        await currentUserId.save();
-        await clearUserCache(currentUserId);
-await clearUserCache(userIdToUnfollow);
 
 
-        res.status(200).json({
-          success: true,
-          message: "User unfollowed successfully",
-        });
-    } catch (error) {
-        console.log("Error in unfollow user:", error);
-        res.status(500).json({ message: "Internal server error" });
-    }
-}
-//get followers and follwing of the user
-export const getFollowersAndFollowing=async(req,res)=>{
-  try {
-    const userId=req.params.id;
-    if(!userId){
-        return res.status(400).json({message:"User id is required"});
-    }
 
-    //checking cache fiorst
-    const cachedata=await redisclient.get(`followers:${userId}`);
-    if (cachedata) {
-      return res.json({ success: true, ...JSON.parse(cachedata), fromCache: true });
-    }
-    
-    const user=await User.findById(userId)
-    .populate("followers","firstName lastName username profilePic")
-    .populate("following","firstName lastName username profilePic")
-    .select("followers following");
-    if(!user){
-        return res.status(404).json({message:"User not found"});
-    }
-
-     const response = {
-      followers: user.followers,
-      following: user.following,
-    };
-
-    await redisclient.setEx(`followers:${userId}`, 300, JSON.stringify(response));
-
-    res.json({success:true,followers:user.followers,following:user.following});
-
-
-  } catch (error) {
-    console.log("Error fetching followers and following:", error);
-    res.status(500).json({ message: "Internal server error" });
-  }
-}
 
 //forn the folkolower and following  amnd p[ost count
 export const getUserStats=async(req,res)=>{
@@ -336,40 +230,25 @@ export const getUserStats=async(req,res)=>{
   }
 }
 //to search the user bu his username or name
-export const searchUser=async(req,res)=>{
+export const searchUser = async (req, res) => {
   try {
-    const {query}=req.query;
-     if (!query || query.trim() === "") {
-      return res.status(400).json({ message: "Search query is required" });
+    const key = req.params.key;
+
+    if (!key || key.trim() === "") {
+      return res.status(400).json({ message: "Search key is required" });
     }
 
-  const cacheduser=await redisclient.get(`searchuser:${query}`);
-  if(cacheduser){
-    return res.json({success:true,users:JSON.parse(cacheduser)});
-  }
-
-    const user=await User.find({
-      $or:[
-        {username:{$regex:query,$options:"i"}},
-        {firstName:{$regex:query,$options:"i"}},
-        {lastName:{$regex:query,$options:"i"}
-      }
-      ],
+    const users = await User.find({
+      $or: [
+        { username: { $regex: key, $options: "i" } },
+        { firstName: { $regex: key, $options: "i" } },
+        { lastName: { $regex: key, $options: "i" } }
+      ]
     }).select("firstName lastName username profilePic bio");
-    if(user.length===0){
-        return res.status(404).json({message:"No users found"});
-    }
 
-    const response = {
-      success: true,
-      count: user.length,
-      user,
-    }
-    await redisclient.setEx(`search:${query}`, 300, JSON.stringify(response));
     res.status(200).json({
       success: true,
-      count: user.length,
-      user,
+      user: users
     });
 
   } catch (error) {
@@ -412,20 +291,18 @@ export const getAllUsers = async (req, res) => {
 //Controleer for the completeuserprofile
 export const completeUserProfile = async (req, res) => {
   try {
-    const { fullName, gender, ageGroup, hobbies } = req.body;
+    const { username, gender, ageGroup,  bio} = req.body;
     const userId = req.user._id;
 
-    const [firstName, ...rest] = fullName.trim().split(" ");
-    const lastName = rest.join(" ");
+   
 
     const updatedUser = await User.findByIdAndUpdate(
       userId,
       {
-        firstName,
-        lastName,
+        username,
         gender,
         ageGroup,
-        hobbies,
+        bio,
         profileCompleted: true
       },
       { new: true }

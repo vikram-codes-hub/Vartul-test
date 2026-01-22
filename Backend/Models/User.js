@@ -21,7 +21,7 @@ const userSchema = new mongoose.Schema(
 
     username: {
       type: String,
-      required: true,
+        sparse: true,
       unique: true,
       trim: true,
     },
@@ -73,10 +73,12 @@ const userSchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
+
+
     profileCompleted: {
-  type: Boolean,
-  default: false
-},
+      type: Boolean,
+      default: false
+    },
 
     walletAddress: {
       type: String,
@@ -101,20 +103,26 @@ const userSchema = new mongoose.Schema(
     resetPasswordToken: String,
     resetPasswordExpire: Date,
 
-    followers: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
-      },
-    ],
-
-    following: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
-      },
-    ],
-
+     followers: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User"
+  }],
+  following: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User"
+  }],
+  
+  // ADD these new counter fields
+  followersCount: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  followingCount: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
     posts: [
       {
         type: mongoose.Schema.Types.ObjectId,

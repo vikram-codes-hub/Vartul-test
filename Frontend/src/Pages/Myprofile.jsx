@@ -11,6 +11,7 @@ const Myprofile = () => {
 
   const { user, loading, fetchStats, stats } = useContext(Usercontext);
   const { userPosts, fetchUserPosts } = usePost();
+  
 
   useEffect(() => {
     if (user?._id) {

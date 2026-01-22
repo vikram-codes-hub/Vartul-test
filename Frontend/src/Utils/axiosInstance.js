@@ -1,38 +1,39 @@
-// src/utils/axiosInstance.js
-import axios from 'axios';
+import axios from "axios";
 
 const axiosInstance = axios.create({
-  baseURL: 'http://localhost:5000', 
+  // 🔥 IMPORTANT: baseURL includes /api/auth
+  baseURL: import.meta.env.VITE_BACKEND_URL + "/api/auth",
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
+  withCredentials: true,
 });
 
-// Request interceptor - adds token to every request
+/* ================= REQUEST INTERCEPTOR ================= */
 axiosInstance.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem("token");
+
     if (token) {
-      config.headers.Authorization = `${token}`;
+      // backend expects token directly (not Bearer)
+      config.headers.token = token;
     }
+
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-// Response interceptor - handles token expiration
+/* ================= RESPONSE INTERCEPTOR ================= */
 axiosInstance.interceptors.response.use(
-  (response) => {
-    return response;
-  },
+  (response) => response,
   (error) => {
-    // If token is invalid/expired, clear localStorage and redirect to login
     if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      window.location.href = '/login';
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+
+      // redirect to auth (not /login)
+      window.location.href = "/auth";
     }
     return Promise.reject(error);
   }

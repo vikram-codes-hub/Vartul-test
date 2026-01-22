@@ -18,10 +18,12 @@ import { HiOutlinePlus } from "react-icons/hi2";
 import { FaCircleInfo } from "react-icons/fa6";
 import { Usercontext } from '../Context/Usercontext';
 import CreatePostModal from './CreatePostModel';
+import SearchOverlay from './SearchOverlay';
 
 const Sidebar = () => {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [openCreate, setOpenCreate] = useState(false);
+  const [openSearch, setOpenSearch] = useState(false);
 
 
   const {Logout}=useContext(Usercontext)
@@ -48,7 +50,7 @@ const Sidebar = () => {
   
   const navItems = [
     { path: '/', icon: CiHome, label: 'Home' },
-    { path: '/search', icon: CiSearch, label: 'Search' },
+    { action: 'search', icon: CiSearch, label: 'Search' },
     { path: '/reels', icon: CiVideoOn, label: 'Reels' },
     { path: '/chat', icon: CiChat1, label: 'Messages' },
     { action: 'create', icon: HiOutlinePlus, label: 'Create' },
@@ -101,6 +103,21 @@ const Sidebar = () => {
         {!isCollapsed && <p className="text-base font-medium">{item.label}</p>}
       </button>
     );
+  }
+  if(item.action=='search'){
+    return (
+      <button
+      key={item.label}
+      onClick={()=>setOpenSearch(true)}
+       className={`flex items-center ${
+          isCollapsed ? "justify-center" : "gap-4"
+        } p-3 mx-2 mb-2 rounded-xl text-gray-300 hover:bg-gray-800 hover:text-white transition-all`}
+        title={isCollapsed ? item.label : ""}
+      >
+<IconComponent/>
+ {!isCollapsed && <p className="text-base font-medium">{item.label}</p>}
+      </button>
+    )
   }
 
   // NORMAL NAV LINKS
@@ -194,6 +211,11 @@ const Sidebar = () => {
       <CreatePostModal
   open={openCreate}
   onClose={() => setOpenCreate(false)}
+/>
+
+<SearchOverlay
+  isOpen={openSearch}
+  onClose={() => setOpenSearch(false)}
 />
 
     </>

@@ -9,10 +9,10 @@ const BasicInfo = () => {
   const {completeprofile}=useContext(Usercontext)
 
   const [formData, setFormData] = useState({
-    fullName: "",
+    username: "",
     gender: "",
     ageGroup: "",
-    hobbies: "",
+    bio: "",
   });
 
   const handleChange = (e) => {
@@ -47,16 +47,16 @@ const BasicInfo = () => {
               {/* Name */}
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-300">
-                  Full Name
+                  User Name
                 </label>
                 <input
                   type="text"
-                  name="fullName"
-                  value={formData.fullName}
+                  name="username"
+                  value={formData.username}
                   onChange={handleChange}
                   required
                   className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all duration-300"
-                  placeholder="Enter your full name"
+                  placeholder="Enter your User Name"
                 />
               </div>
 
@@ -101,16 +101,16 @@ const BasicInfo = () => {
                 </div>
               </div>
 
-              {/* Hobbies */}
+              {/* bio */}
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-300">
-                  Hobbies
+                  bio
                 </label>
                 <textarea
-                  name="hobbies"
-                  value={formData.hobbies}
+                  name="bio"
+                  value={formData.bio}
                   onChange={handleChange}
-                  placeholder="Tell us about your hobbies..."
+                  placeholder="Tell us about your bio..."
                   rows="3"
                   className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all duration-300"
                 ></textarea>
