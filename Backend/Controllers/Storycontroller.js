@@ -1,79 +1,364 @@
 import Story from "../Models/Story.js";
-import User from "../Models/User.js";
-import cloudinary from "../Config/cloudinary.js";
+import Follow from "../Models/Follow.js";
+import cloudinary from "../config/cloudinary.js";
+import redisClient from "../Config/redis.js"
 
-
-// ==============================
-// 📌 Create new story
-// ==============================
-export const createStory = async (req, res) => {
+/* =========================================
+   UPLOAD STORY
+========================================= */
+export const uploadStory = async (req, res) => {
   try {
-    // TODO: extract media + type
-    // TODO: upload to cloudinary (image/video)
-    // TODO: set expiresAt = now + 24 hours
-    // TODO: save story to DB
-    // TODO: return story
-  } catch (error) {
-    console.error("Error creating story:", error);
-    res.status(500).json({ success: false, error: "Failed to create story" });
+    const {
+      mediaUrl,
+      mediaType,
+      cloudinaryPublicId,
+      caption,
+      duration,
+      visibility,
+    } = req.body;
+
+    if (!mediaUrl || !mediaType || !cloudinaryPublicId) {
+      return res.status(400).json({
+        success: false,
+        message: "Media URL, media type and Cloudinary ID are required",
+      });
+    }
+
+    const story = await Story.create({
+      userId: req.user._id,
+      mediaUrl,
+      mediaType,
+      cloudinaryPublicId,
+      caption: caption || "",
+      duration: mediaType === "image" ? 5 : duration || 15,
+      visibility: visibility || "public",
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+    });
+
+    // Clear caches
+    const userId = req.user._id.toString();
+    await redisClient.del([
+      `stories:feed:${userId}`,
+      `stories:me:${userId}`,
+    ]);
+
+    res.status(201).json({
+      success: true,
+      story,
+    });
+  } catch (err) {
+    console.error("Upload story error:", err);
+    res.status(500).json({
+      success: false,
+      message: "Failed to upload story",
+    });
   }
 };
 
-
-// ==============================
-// 📌 Get stories of following + self
-// ==============================
-export const getStories = async (req, res) => {
+/* =========================================
+   GET STORIES FEED 
+========================================= */
+export const getStoriesFeed = async (req, res) => {
   try {
-    // TODO: get current user
-    // TODO: get following list
-    // TODO: fetch stories of (following + self)
-    // TODO: return stories sorted by time
-  } catch (error) {
-    console.error("Error fetching stories:", error);
-    res.status(500).json({ success: false, error: "Failed to fetch stories" });
+    const userId = req.user._id.toString();
+    const cacheKey = `stories:feed:${userId}`;
+
+    // Redis cache
+    const cached = await redisClient.get(cacheKey);
+    if (cached) {
+      return res.json({
+        success: true,
+        stories: JSON.parse(cached),
+        fromCache: true,
+      });
+    }
+
+    const following = await Follow.find({ follower: req.user._id }).select(
+      "following"
+    );
+
+    const followingIds = following.map((f) => f.following);
+    const userIds = [req.user._id, ...followingIds];
+
+    const stories = await Story.aggregate([
+      {
+        $match: {
+          userId: { $in: userIds },
+          isActive: true,
+          expiresAt: { $gt: new Date() },
+        },
+      },
+      { $sort: { createdAt: 1 } }, // oldest → newest per user
+      {
+        $group: {
+          _id: "$userId",
+          stories: { $push: "$$ROOT" },
+          latestStory: { $last: "$$ROOT" },
+          hasUnviewed: {
+            $max: {
+              $cond: [
+                {
+                  $in: [
+                    req.user._id,
+                    {
+                      $map: {
+                        input: "$viewers",
+                        as: "v",
+                        in: "$$v.userId",
+                      },
+                    },
+                  ],
+                },
+                0,
+                1,
+              ],
+            },
+          },
+        },
+      },
+      {
+        $lookup: {
+          from: "users",
+          localField: "_id",
+          foreignField: "_id",
+          as: "user",
+        },
+      },
+      { $unwind: "$user" },
+      {
+        $project: {
+          userId: "$_id",
+          username: "$user.username",
+          profilePic: "$user.profilePic",
+          stories: 1,
+          storyCount: { $size: "$stories" },
+          latestStoryTime: "$latestStory.createdAt",
+          hasUnviewed: 1,
+        },
+      },
+      {
+        $sort: {
+          hasUnviewed: -1,
+          latestStoryTime: -1,
+        },
+      },
+    ]);
+
+    // Cache for 60 seconds
+    await redisClient.setEx(cacheKey, 60, JSON.stringify(stories));
+
+    res.json({ success: true, stories });
+  } catch (err) {
+    console.error("Get stories feed error:", err);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch stories",
+    });
   }
 };
 
-
-// ==============================
-// 📌 Mark story as viewed
-// ==============================
+/* =========================================
+   VIEW STORY
+========================================= */
 export const viewStory = async (req, res) => {
   try {
-    // TODO: extract storyId
-    // TODO: add user to viewers[] only once
-    // TODO: return updated
-  } catch (error) {
-    console.error("Error marking story viewed:", error);
-    res.status(500).json({ success: false, error: "Failed to mark viewed" });
+    const { storyId } = req.params;
+
+    const story = await Story.findById(storyId);
+    if (!story) {
+      return res.status(404).json({
+        success: false,
+        message: "Story not found",
+      });
+    }
+
+    if (story.isExpired()) {
+      return res.status(410).json({
+        success: false,
+        message: "Story expired",
+      });
+    }
+
+    // Own story → ignore
+    if (story.userId.toString() === req.user._id.toString()) {
+      return res.json({ success: true });
+    }
+
+    await story.addViewer(req.user._id);
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("View story error:", err);
+    res.status(500).json({
+      success: false,
+      message: "Failed to view story",
+    });
   }
 };
 
+/* =========================================
+   GET MY STORIES
+========================================= */
+export const getMyStories = async (req, res) => {
+  try {
+    const userId = req.user._id.toString();
+    const cacheKey = `stories:me:${userId}`;
 
-// ==============================
-// 📌 Delete a story (only owner)
-// ==============================
+    const cached = await redisClient.get(cacheKey);
+    if (cached) {
+      return res.json({
+        success: true,
+        stories: JSON.parse(cached),
+        fromCache: true,
+      });
+    }
+
+    const stories = await Story.find({
+      userId: req.user._id,
+      isActive: true,
+      expiresAt: { $gt: new Date() },
+    })
+      .sort({ createdAt: -1 })
+      .populate("viewers.userId", "username profilePic");
+
+    await redisClient.setEx(cacheKey, 60, JSON.stringify(stories));
+
+    res.json({ success: true, stories });
+  } catch (err) {
+    console.error("Get my stories error:", err);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch my stories",
+    });
+  }
+};
+
+/* =========================================
+   GET USER STORIES
+========================================= */
+export const getUserStories = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const cacheKey = `stories:user:${userId}`;
+
+    const cached = await redisClient.get(cacheKey);
+    if (cached) {
+      return res.json({
+        success: true,
+        stories: JSON.parse(cached),
+        fromCache: true,
+      });
+    }
+
+    const stories = await Story.find({
+      userId,
+      isActive: true,
+      expiresAt: { $gt: new Date() },
+    })
+      .sort({ createdAt: 1 })
+      .populate("userId", "username profilePic");
+
+    await redisClient.setEx(cacheKey, 60, JSON.stringify(stories));
+
+    res.json({ success: true, stories });
+  } catch (err) {
+    console.error("Get user stories error:", err);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch user stories",
+    });
+  }
+};
+
+/* =========================================
+   GET STORY VIEWERS
+========================================= */
+export const getStoryViewers = async (req, res) => {
+  try {
+    const { storyId } = req.params;
+
+    const story = await Story.findById(storyId).populate(
+      "viewers.userId",
+      "username profilePic"
+    );
+
+    if (!story) {
+      return res.status(404).json({
+        success: false,
+        message: "Story not found",
+      });
+    }
+
+    if (story.userId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    res.json({
+      success: true,
+      viewers: story.viewers,
+      viewCount: story.viewCount,
+    });
+  } catch (err) {
+    console.error("Get story viewers error:", err);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch viewers",
+    });
+  }
+};
+
+/* =========================================
+   DELETE STORY 
+========================================= */
 export const deleteStory = async (req, res) => {
   try {
-    // TODO: extract storyId
-    // TODO: verify story belongs to user
-    // TODO: delete from DB
-    // TODO: return success
-  } catch (error) {
-    console.error("Error deleting story:", error);
-    res.status(500).json({ success: false, error: "Failed to delete story" });
-  }
-};
+    const { storyId } = req.params;
 
+    const story = await Story.findById(storyId);
+    if (!story) {
+      return res.status(404).json({
+        success: false,
+        message: "Story not found",
+      });
+    }
 
-// ==============================
-// 📌 Auto delete expired stories (CRON job optional)
-// ==============================
-export const deleteExpiredStories = async () => {
-  try {
-    // TODO: delete stories where expiresAt < now
-  } catch (error) {
-    console.error("Error deleting expired stories:", error);
+    if (story.userId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    // Delete from Cloudinary
+    if (story.cloudinaryPublicId) {
+      await cloudinary.uploader.destroy(story.cloudinaryPublicId, {
+        resource_type: story.mediaType === "video" ? "video" : "image",
+      });
+    }
+
+    // Delete from DB
+    await Story.findByIdAndDelete(storyId);
+
+    // Clear Redis caches
+    const userId = req.user._id.toString();
+    await redisClient.del([
+      `stories:feed:${userId}`,
+      `stories:me:${userId}`,
+      `stories:user:${userId}`,
+    ]);
+
+    res.json({
+      success: true,
+      message: "Story deleted successfully",
+    });
+  } catch (err) {
+    console.error("Delete story error:", err);
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete story",
+    });
   }
 };

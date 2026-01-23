@@ -1,95 +1,69 @@
-import React, { useRef, useState, useEffect } from 'react'
-import Story from './Story'
-import { dummyStories } from '../../assets/Storydummydata'
-import { FaCircleChevronLeft } from "react-icons/fa6";
-import { FaCircleChevronRight } from "react-icons/fa6";
+import React, { useRef, useState, useEffect } from "react";
+import Story from "./Story";
+import { dummyStories } from "../../assets/Storydummydata";
 
 const Hero = () => {
-  const scrollContainerRef = useRef(null)
-  const [showLeftButton, setShowLeftButton] = useState(false)
-  const [showRightButton, setShowRightButton] = useState(true)
+  const scrollRef = useRef(null);
+  const [showLeft, setShowLeft] = useState(false);
+  const [showRight, setShowRight] = useState(true);
 
-  //checling to show scroll or not
   const checkScroll = () => {
-    if (scrollContainerRef.current) {
-      const { scrollLeft, scrollWidth, clientWidth } = scrollContainerRef.current
-      
-      setShowLeftButton(scrollLeft > 0)
-      
-      setShowRightButton(scrollLeft < scrollWidth - clientWidth - 10)
-    }
-  }
+    if (!scrollRef.current) return;
+    const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
+    setShowLeft(scrollLeft > 10);
+    setShowRight(scrollLeft < scrollWidth - clientWidth - 10);
+  };
 
   useEffect(() => {
-    checkScroll()
-    const container = scrollContainerRef.current
-    
-    if (container) {
-      container.addEventListener('scroll', checkScroll)
-      window.addEventListener('resize', checkScroll)
-      
-      return () => {
-        container.removeEventListener('scroll', checkScroll)
-        window.removeEventListener('resize', checkScroll)
-      }
-    }
-  }, [])
+    checkScroll();
+    scrollRef.current?.addEventListener("scroll", checkScroll);
+    window.addEventListener("resize", checkScroll);
+    return () => {
+      scrollRef.current?.removeEventListener("scroll", checkScroll);
+      window.removeEventListener("resize", checkScroll);
+    };
+  }, []);
 
-  const scrollLeft = () => {
-    if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollBy({
-        left: -300,
-        behavior: 'smooth'
-      })
-    }
-  }
-
-  const scrollRight = () => {
-    if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollBy({
-        left: 300,
-        behavior: 'smooth'
-      })
-    }
-  }
+  const scroll = (dir) => {
+    scrollRef.current.scrollBy({
+      left: dir === "left" ? -280 : 280,
+      behavior: "smooth",
+    });
+  };
 
   return (
-    <div className="relative mt-6 ml-4">
-      <div 
-        ref={scrollContainerRef}
-        className="overflow-x-auto scroll-smooth scrollbar-hide"
-      >
-        <div className="flex w-max">
-          {dummyStories.map((story, index) => (
-            <div
-              key={story.id ?? index}
-              className="-ml-[26px] sm:ml-2 md:ml-1 flex-none min-w-[33.333%] sm:min-w-[15%] md:min-w-[19.666%]"
-            >
-              <Story image={story.image} username={story.username} />
-            </div>
-          ))}
-        </div>
-      </div>
-      
-      {showLeftButton && (
-        <div className="hidden md:block absolute top-12 left-7 -translate-y-1/2">
-          <FaCircleChevronLeft 
-            onClick={scrollLeft}
-            className='text-white text-2xl cursor-pointer hover:text-gray-300 transition-colors drop-shadow-lg'
-          />
-        </div>
+    <div className="relative w-full bg-black overflow-hidden">
+      {/* LEFT BUTTON */}
+      {showLeft && (
+        <button
+          onClick={() => scroll("left")}
+          className="hidden md:flex absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 bg-white rounded-full items-center justify-center shadow z-10"
+        >
+          ‹
+        </button>
       )}
-      
-      {showRightButton && (
-        <div className="hidden md:block absolute top-12 right-6 -translate-y-1/2">
-          <FaCircleChevronRight 
-            onClick={scrollRight}
-            className='text-white text-2xl cursor-pointer hover:text-gray-300 transition-colors drop-shadow-lg'
-          />
-        </div>
+
+      {/* STORIES */}
+      <div
+        ref={scrollRef}
+        className="flex gap-4 overflow-x-auto py-4 scrollbar-hide"
+      >
+        {dummyStories.map((story, i) => (
+          <Story key={i} image={story.image} username={story.username} />
+        ))}
+      </div>
+
+      {/* RIGHT BUTTON */}
+      {showRight && (
+        <button
+          onClick={() => scroll("right")}
+          className="hidden md:flex absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 bg-white rounded-full items-center justify-center shadow z-10"
+        >
+          ›
+        </button>
       )}
     </div>
-  )
-}
+  );
+};
 
-export default Hero
+export default Hero;

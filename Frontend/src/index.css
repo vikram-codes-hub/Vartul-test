@@ -23,3 +23,42 @@
   --breakpoint-lg: 64rem;   /* 1024px */
   --breakpoint-xl: 80rem;   /* 1280px */
 }
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+/* Smooth animations */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Better image loading */
+img {
+  image-rendering: -webkit-optimize-contrast;
+}
+
+/* Custom scrollbar for sidebar  */
+.xl\:block::-webkit-scrollbar {
+  width: 6px;
+}
+
+.xl\:block::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.xl\:block::-webkit-scrollbar-thumb {
+  background: #262626;
+  border-radius: 3px;
+}
+
+.xl\:block::-webkit-scrollbar-thumb:hover {
+  background: #3a3a3a;
+}

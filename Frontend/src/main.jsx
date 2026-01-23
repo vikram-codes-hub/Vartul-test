@@ -8,6 +8,7 @@ import { Provider } from 'react-redux'
 import { store } from './store'
 import UserContextProvider from './Context/Usercontext.jsx'
 import { PostProvider } from './Context/PostContext.jsx'
+import StoryContextProvider from './Context/StoryContext.jsx'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
@@ -15,9 +16,11 @@ createRoot(document.getElementById('root')).render(
       <BrowserRouter>
        <UserContextProvider>
         <PostProvider>
+           <StoryContextProvider>
          <ChatContextProvider>
           <App />
          </ChatContextProvider>
+           </StoryContextProvider>
        </PostProvider>
       </UserContextProvider>
      </BrowserRouter>

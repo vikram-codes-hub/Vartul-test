@@ -4,18 +4,26 @@ import { dummyPosts } from '../../assets/Storydummydata'
 
 const Postforhome = () => {
   return (
-    <div className="py-3 sm:py-6 space-y-3 sm:space-y-8 px-2 sm:px-4 mx-auto w-full max-w-[95%] sm:max-w-[85%] md:max-w-[70%] overflow-x-hidden">
+    <div className="w-full space-y-4">
       {dummyPosts.map((post) => (
-        <div key={post.id} className="transform scale-[0.95] sm:scale-100">
-          <Posthelper 
-            profile={post.profile}
-            username={post.username}
-            postImage={post.postImage}
-            likes={post.likes}
-            caption={post.caption}
-          />
-        </div>
+        <Posthelper 
+          key={post.id}
+          profile={post.profile}
+          username={post.username}
+          postImage={post.postImage}
+          likes={post.likes}
+          caption={post.caption}
+        />
       ))}
+      
+      {/* End of posts message */}
+      <div className="flex flex-col items-center justify-center py-12 text-gray-500">
+        <svg className="w-16 h-16 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <p className="text-sm font-semibold mb-1">You're all caught up</p>
+        <p className="text-xs">You've seen all new posts from the past 3 days.</p>
+      </div>
     </div>
   )
 }
