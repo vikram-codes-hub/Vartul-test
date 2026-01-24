@@ -30,6 +30,9 @@ import ProfilePicture from "./Pages/ProfilePicture";
 import PostModal from "./Components/Postmodel";
 import Footer from "./Pages/Footer";
 
+/* 🔥 STORY VIEWER */
+import StoryViewer from "./Models/StoryViewer";
+
 const App = () => {
   const location = useLocation();
   const { authuser } = useContext(Usercontext);
@@ -131,6 +134,9 @@ const App = () => {
 
       {/* ================= FOOTER ================= */}
       {!hideFooter && <Footer />}
+
+      {/* 🔥 STORY VIEWER MODAL (Global - renders when activeUserStories exists) */}
+      {authuser && <StoryViewer />}
     </>
   );
 };

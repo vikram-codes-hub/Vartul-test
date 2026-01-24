@@ -1,8 +1,7 @@
 import axios from "axios";
 
 const axiosInstance = axios.create({
-  // 🔥 IMPORTANT: baseURL includes /api/auth
-  baseURL: import.meta.env.VITE_BACKEND_URL + "/api/auth",
+  baseURL: import.meta.env.VITE_BACKEND_URL,
   headers: {
     "Content-Type": "application/json",
   },
@@ -15,7 +14,6 @@ axiosInstance.interceptors.request.use(
     const token = localStorage.getItem("token");
 
     if (token) {
-      // backend expects token directly (not Bearer)
       config.headers.token = token;
     }
 
@@ -31,8 +29,6 @@ axiosInstance.interceptors.response.use(
     if (error.response?.status === 401) {
       localStorage.removeItem("token");
       localStorage.removeItem("user");
-
-      // redirect to auth (not /login)
       window.location.href = "/auth";
     }
     return Promise.reject(error);

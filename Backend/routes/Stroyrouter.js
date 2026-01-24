@@ -10,6 +10,7 @@ import {
 } from "../Controllers/StoryController.js";
 
 import { isLoggedIn } from "../Middelwares/Isloggeddin.js";
+import upload from "../Middelwares/upload.js";
 
 const storyRouter = express.Router();
 
@@ -18,7 +19,8 @@ const storyRouter = express.Router();
 ========================= */
 storyRouter.post(
   "/upload",
-  isLoggedIn,
+ isLoggedIn,
+  upload.single("file"),
   uploadStory
 );
 

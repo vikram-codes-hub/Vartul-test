@@ -1,9 +1,14 @@
 import axios from "../utils/axiosInstance";
 
 // Upload story
-export const uploadStoryApi = (data) => {
-  return axios.post("/api/story/upload", data);
+export const uploadStoryApi = (formData) => {
+  return axios.post("/api/story/upload", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
 };
+
 
 // Get stories feed (home)
 export const getStoriesFeedApi = () => {

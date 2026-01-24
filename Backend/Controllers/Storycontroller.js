@@ -1,4 +1,4 @@
-import Story from "../Models/Story.js";
+import Story from "../Models/Story_Model.js"
 import Follow from "../Models/Follow.js";
 import cloudinary from "../config/cloudinary.js";
 import redisClient from "../Config/redis.js"
@@ -8,44 +8,52 @@ import redisClient from "../Config/redis.js"
 ========================================= */
 export const uploadStory = async (req, res) => {
   try {
-    const {
-      mediaUrl,
-      mediaType,
-      cloudinaryPublicId,
-      caption,
-      duration,
-      visibility,
-    } = req.body;
-
-    if (!mediaUrl || !mediaType || !cloudinaryPublicId) {
+    if (!req.file) {
       return res.status(400).json({
         success: false,
-        message: "Media URL, media type and Cloudinary ID are required",
+        message: "No file uploaded",
       });
     }
 
-    const story = await Story.create({
-      userId: req.user._id,
-      mediaUrl,
-      mediaType,
-      cloudinaryPublicId,
-      caption: caption || "",
-      duration: mediaType === "image" ? 5 : duration || 15,
-      visibility: visibility || "public",
-      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-    });
+    const isVideo = req.file.mimetype.startsWith("video");
 
-    // Clear caches
-    const userId = req.user._id.toString();
-    await redisClient.del([
-      `stories:feed:${userId}`,
-      `stories:me:${userId}`,
-    ]);
+    const result = await cloudinary.uploader.upload_stream(
+      {
+        resource_type: isVideo ? "video" : "image",
+        folder: "stories",
+      },
+      async (error, uploadResult) => {
+        if (error) {
+          console.error("Cloudinary upload error:", error);
+          return res.status(500).json({
+            success: false,
+            message: "Cloudinary upload failed",
+          });
+        }
 
-    res.status(201).json({
-      success: true,
-      story,
-    });
+        const story = await Story.create({
+          userId: req.user._id,
+          mediaUrl: uploadResult.secure_url,
+          mediaType: isVideo ? "video" : "image",
+          cloudinaryPublicId: uploadResult.public_id,
+          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        });
+
+        // Clear Redis cache
+        const userId = req.user._id.toString();
+        await redisClient.del([
+          `stories:feed:${userId}`,
+          `stories:me:${userId}`,
+        ]);
+
+        res.status(201).json({
+          success: true,
+          story,
+        });
+      }
+    );
+
+    result.end(req.file.buffer);
   } catch (err) {
     console.error("Upload story error:", err);
     res.status(500).json({
@@ -54,6 +62,7 @@ export const uploadStory = async (req, res) => {
     });
   }
 };
+
 
 /* =========================================
    GET STORIES FEED 
