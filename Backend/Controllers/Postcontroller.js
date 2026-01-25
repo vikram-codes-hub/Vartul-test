@@ -64,28 +64,41 @@ export const createPost = async (req, res) => {
 // ==============================
 // FEED POSTS (FOLLOWING + SELF)
 // ==============================
+import Follow from "../Models/Follow.js";
+
 export const getFeedPosts = async (req, res) => {
   try {
     const userId = req.user._id;
 
-    const user = await User.findById(userId).select("following");
-
-    const followingList = user.following || [];
-    followingList.push(userId);
-
+    // pagination
     const page = Math.max(1, parseInt(req.query.page || "1"));
     const pageSize = Math.max(5, parseInt(req.query.pageSize || "10"));
     const skip = (page - 1) * pageSize;
 
-    const posts = await Post.find({ userId: { $in: followingList } })
+    // 1️⃣ Get following userIds from Follow collection
+    const followingDocs = await Follow.find(
+      { follower: userId },
+      { following: 1, _id: 0 }
+    ).lean();
+
+    const followingList = followingDocs.map(doc => doc.following);
+
+    // 2️⃣ Add self
+    followingList.push(userId);
+
+    // 3️⃣ Fetch feed posts
+    const posts = await Post.find({
+      userId: { $in: followingList }
+    })
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(pageSize)
       .populate("userId", "username profilePic")
       .lean();
 
+    // 4️⃣ Count total posts
     const totalPosts = await Post.countDocuments({
-      userId: { $in: followingList },
+      userId: { $in: followingList }
     });
 
     res.status(200).json({
@@ -98,11 +111,16 @@ export const getFeedPosts = async (req, res) => {
         hasMore: skip + posts.length < totalPosts,
       },
     });
+
   } catch (error) {
     console.error("Feed error:", error);
-    res.status(500).json({ success: false, error: "Failed to fetch feed" });
+    res.status(500).json({
+      success: false,
+      error: "Failed to fetch feed"
+    });
   }
 };
+
 
 
 // ==============================
@@ -276,7 +294,7 @@ export const deletePost = async (req, res) => {
     await Post.findByIdAndDelete(postId);
     
       await User.findByIdAndUpdate(userId, {
-  $inc: { postsCount: 1 }
+  $inc: { postsCount: -1 }
 });
 
     res.json({ success: true, message: "Post deleted" });
